@@ -106,7 +106,7 @@ public class PeerConnection {
 				this.peer.setBitfield(peerBitfield);
 				
 				BitSet selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
-				this.interested = PeerConnection.isInterested(selfBitfield, peerBitfield);
+				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
 				
 				this.state = State.IN_BITFIELD_RECEIVED;
 				System.out.println("Status : " + this.state + ", received bitfield message [" + peerMessage + "].");
@@ -148,13 +148,13 @@ public class PeerConnection {
 				// TODO: Set the bitfield of this.peer.
 				BitSet peerBitfield = ((PeerMessage.BitfieldMessage)peerMessage).getBitfield();
 				this.peer.setBitfield(peerBitfield);
-				this.interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
+				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
 				
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
 
 				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + peerMessage + ".");
-			    if(this.interested) {
+			    if(this.interesting) {
 				    PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
 				    this.addMessageToSend(interestedMessage);
 			    }
@@ -174,19 +174,33 @@ public class PeerConnection {
             if(peerMessage instanceof KeepAliveMessage) {
 			}else if(peerMessage instanceof ChokeMessage) {
 				this.choked = true;
+				// TODO: Lot of things to do.
 			}else if(peerMessage instanceof UnchokeMessage) {
 				this.choked = false;
-				// TODO:
-				this.downloadManager.downloadMoreSlices(this.self.getInfoHash(), this);
+				if(this.interesting) {
+				    this.downloadManager.downloadMoreSlices(this.self.getInfoHash(), this);
+				}
 			}else if(peerMessage instanceof InterestedMessage) {
 				this.interested = true;
+				// TODO: If peer is interested in me, I will unchoke him?
 			}else if(peerMessage instanceof NotInterestedMessage) {
 				this.interested = false;
+				// TODO: Cancel the response from the peer.
 			}else if(peerMessage instanceof HaveMessage) {
 				HaveMessage haveMessage = (HaveMessage)peerMessage;
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
+				
+				if(!this.interesting) {
+					boolean interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), this.peer.getBitfield());
+					this.interesting = interested;
+					if(interested) {
+					    PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
+					    this.addMessageToSend(interestedMessage);
+					}
+				}
+				
 				// TODO: XXXX
-				if(!this.choked) {
+				if(!this.choked && this.interesting) {
 				    this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
 				}
 			}else if(peerMessage instanceof BitfieldMessage) {
@@ -272,7 +286,7 @@ public class PeerConnection {
 			    System.out.println("Status : " + this.state + ", completed writing bitfield message to peer."); 
 			    
 			    // TODO: Shall we put this message in the head of the queue?
-			    if(this.interested) {
+			    if(this.interesting) {
 				    PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
 				    this.addMessageToSend(interestedMessage);
 			    }

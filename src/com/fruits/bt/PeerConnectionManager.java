@@ -280,9 +280,20 @@ public class PeerConnectionManager implements Runnable {
 	}
 	
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) throws Exception {
+		BitSet selfBitfield = this.downloadManager.getBitfield(infoHash);
+		
 		List<PeerConnection> peerConnections = this.peerConnections.get(infoHash);
 		for(PeerConnection peerConnection : peerConnections) {
-			if(peerConnection.isChoked() || peerConnection.isChoking() || !peerConnection.isInterested())
+			BitSet peerBitfield = peerConnection.getPeer().getBitfield();
+			boolean interesting = peerConnection.isInteresting();
+			boolean interestingNew = PeerConnection.isInterested(selfBitfield, peerBitfield);
+			if(interesting && !interestingNew) {
+			    PeerMessage.NotInterestedMessage notInterestedMessage = new PeerMessage.NotInterestedMessage();
+			    peerConnection.addMessageToSend(notInterestedMessage);
+			}
+			peerConnection.setInteresting(interestingNew);
+			
+			if(!peerConnection.isInterested())
 				break;
 			peerConnection.addMessageToSend(new HaveMessage(pieceIndex));
 		}
