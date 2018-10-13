@@ -1,0 +1,8 @@
+2018-10-4
+=========
+1. Design how to handle the incoming and outgoing messages.
+   (1) Put the incoming messages in a queue and use a separate thread to handle them?
+   (2) Multiple threads to handle the incoming and outgoing messages?
+       A separate thread to handle the messages of a peer connection?
+       
+2. Socket managing : Client will not crash because of single connection is closed.
