@@ -166,7 +166,7 @@ public class DownloadManager {
 		 * 
 		 * 2. Check the bitfield of the fastest peer and pick the slice this peer has but I do not have it yet. 
 		 * 
-		 * 3. Download slices from the peers who unchoked me.
+		 * 3. Download slices from the peers who is unchoking me.
 		 * 
 		 * 
 		 */

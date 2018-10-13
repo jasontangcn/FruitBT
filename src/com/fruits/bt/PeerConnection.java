@@ -171,8 +171,7 @@ public class PeerConnection {
 			}else if(peerMessage instanceof HaveMessage) {
 				HaveMessage haveMessage = (HaveMessage)peerMessage;
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
-				
-				// TODO:
+				// TODO: XXXX
 				if(!this.choked) {
 				    this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
 				}
