@@ -8,7 +8,7 @@ public class Peer {
 	
 	private String peerId; // same with the peerId passed to Tracker
 	private String infoHash;
-	private BitSet bitfield;
+	private BitSet bitfield; // self should not use this field, it should be null.
 
 	public Peer() {
 	}
