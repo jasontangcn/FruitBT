@@ -38,6 +38,8 @@ public class PeerConnectionManager implements Runnable {
 	
 	private ScheduledExecutorService choker = Executors.newSingleThreadScheduledExecutor();
 	
+	private ScheduledExecutorService aliveChecker = Executors.newSingleThreadScheduledExecutor();
+	
 	public PeerConnectionManager(InetSocketAddress listenEndpoint) throws Exception {
 		this.listenEndpoint = listenEndpoint;
 		this.selector = Selector.open();
@@ -95,6 +97,23 @@ public class PeerConnectionManager implements Runnable {
 				}
 			}
 		}, 10L, 10L, TimeUnit.SECONDS);
+		
+		
+		aliveChecker.scheduleAtFixedRate(new Runnable() {
+			public void run() {
+				Iterator<String> iterator = peerConnections.keySet().iterator();
+				while(iterator.hasNext()) {
+				    List<PeerConnection> connections = peerConnections.get(iterator.next());
+				    for(PeerConnection connection : connections) {
+				    	try {
+					        connection.checkAliveAndKeepAlive();
+				    	}catch(Exception e) {
+				    		e.printStackTrace();
+				    	}
+				    }
+				}
+			}
+		}, 0L, 45L, TimeUnit.SECONDS);
 	}
 
 	public void setDownloadManager(DownloadManager downloadManager) {

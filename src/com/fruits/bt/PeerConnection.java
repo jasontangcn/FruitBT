@@ -54,7 +54,8 @@ public class PeerConnection {
 
 	private ArrayBlockingQueue<PeerMessage> messagesToSend = new ArrayBlockingQueue<PeerMessage>(1024, true);
 	
-	private long timeLastReadWriteMessage;
+	private long timeLastReadMessage;
+	private long timeLastWriteMessage;
 	
 	private int indexPieceDownloading = -1;
 	private int requestMessagesSent;
@@ -100,11 +101,16 @@ public class PeerConnection {
 			if (null == peerMessage)
 				return;
 			if (peerMessage instanceof PeerMessage.BitfieldMessage) {
+				BitSet peerBitfield = ((PeerMessage.BitfieldMessage)peerMessage).getBitfield();
 				// TODO: Set the bitfield of this.peer.
-				this.peer.setBitfield(((PeerMessage.BitfieldMessage)peerMessage).getBitfield());
+				this.peer.setBitfield(peerBitfield);
+				
+				BitSet selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
+				this.interested = PeerConnection.isInterested(selfBitfield, peerBitfield);
+				
+				this.state = State.IN_BITFIELD_RECEIVED;
+				System.out.println("Status : " + this.state + ", received bitfield message [" + peerMessage + "].");
 			}
-			this.state = State.IN_BITFIELD_RECEIVED;
-			System.out.println("Status : " + this.state + ", received bitfield message [" + peerMessage + "].");
 		}
 		
 		if (State.IN_BITFIELD_RECEIVED == this.state) {
@@ -140,14 +146,21 @@ public class PeerConnection {
 				return;
 			if (peerMessage instanceof PeerMessage.BitfieldMessage) {
 				// TODO: Set the bitfield of this.peer.
-				this.peer.setBitfield(((PeerMessage.BitfieldMessage)peerMessage).getBitfield());
+				BitSet peerBitfield = ((PeerMessage.BitfieldMessage)peerMessage).getBitfield();
+				this.peer.setBitfield(peerBitfield);
+				this.interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
+				
+				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
+				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
+
+				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + peerMessage + ".");
+			    if(this.interested) {
+				    PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
+				    this.addMessageToSend(interestedMessage);
+			    }
+			    // Send the messages that are put in queue during handshaking and bitfield exchanging.
+				startSendMessagesInQueue();
 			}
-			this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
-			this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
-			System.out.println("Status : " + this.state + ", completed reading bitfield message : " + peerMessage + ".");
-			
-		    // Send the messages that are put in queue during handshaking and bitfield exchanging.
-			startSendMessagesInQueue();
 		}
 
 		if(State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
@@ -156,8 +169,9 @@ public class PeerConnection {
 			if (null == peerMessage)
 				return;
 			
+			this.timeLastReadMessage = System.currentTimeMillis();
+			
             if(peerMessage instanceof KeepAliveMessage) {
-
 			}else if(peerMessage instanceof ChokeMessage) {
 				this.choked = true;
 			}else if(peerMessage instanceof UnchokeMessage) {
@@ -257,6 +271,11 @@ public class PeerConnection {
 			    //this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 			    System.out.println("Status : " + this.state + ", completed writing bitfield message to peer."); 
 			    
+			    // TODO: Shall we put this message in the head of the queue?
+			    if(this.interested) {
+				    PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
+				    this.addMessageToSend(interestedMessage);
+			    }
 			    // Send the messages that are put in queue during handshaking and bitfield exchanging.
 			    startSendMessagesInQueue();
 			}
@@ -332,6 +351,7 @@ public class PeerConnection {
 				this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 				break;
 			}else {
+				this.timeLastWriteMessage = System.currentTimeMillis();
 				System.out.println("Status : " + this.state + ", completed writing a message to peer.");
 			}
 		}
@@ -437,5 +457,34 @@ public class PeerConnection {
 
 	public void setRequestMessagesSent(int requestMessagesSent) {
 		this.requestMessagesSent = requestMessagesSent;
+	}
+	
+	public static boolean isInterested(BitSet a, BitSet b) {
+		// TODO: validate parameters.
+		for(int i = 0; i< a.length(); i++) {
+			if(!a.get(i) && b.get(i)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void checkAliveAndKeepAlive() throws Exception {
+		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
+			long now = System.currentTimeMillis();
+			
+			if(now - this.timeLastWriteMessage > 45 * 1000) {
+				PeerMessage.KeepAliveMessage keepAliveMessage = new PeerMessage.KeepAliveMessage();
+				this.addMessageToSend(keepAliveMessage);
+			}
+			
+			if(now - this.timeLastReadMessage > 3 * 60 * 1000) {
+				this.close();
+			}
+		}
+	}
+	
+	public void close() throws Exception {
+		
 	}
 }

@@ -159,7 +159,7 @@ public class FileMetadata implements Serializable {
 	public TorrentSeed getSeed() {
 		return seed;
 	}
-
+	
 	@Override
 	public String toString() {
 		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n pieces = \n" + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";

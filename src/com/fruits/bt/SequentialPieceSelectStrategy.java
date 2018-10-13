@@ -10,22 +10,4 @@ public class SequentialPieceSelectStrategy {
 		this.downloadManager = downloadManager;
 		this.connectionManager = connectionManager;
 	}
-	
-	public boolean downloadNextSlice(String infoHash) throws Exception {
-		DownloadTask downloadTask = this.downloadManager.getDownloadTask(infoHash);
-		if(null != downloadTask) {
-			FileMetadata fileMetadata = downloadTask.getFileMetadata();
-			Slice slice;
-			
-			while(null != (slice = fileMetadata.getNextIncompletedSlice())) {
-				PeerConnection connection = connectionManager.canIDownloadThisSlice(infoHash, slice);
-				if(null != connection) {
-					connection.addMessageToSend(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
-					return true;
-				}
-			};
-		}
-		
-		return false;
-	}
 }
