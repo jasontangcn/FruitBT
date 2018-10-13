@@ -7,13 +7,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.fruits.bt.PeerMessage.PieceMessage;
-import com.fruits.bt.PeerMessage.RequestMessage;
 
 public class DownloadManager {	
 	// private TrackerManager trackerManager = new TrackerManager();
@@ -83,7 +81,6 @@ public class DownloadManager {
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHash(infoHash);
 		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetada.getBitfield() + ".");
-		self.setBitfield(fileMetada.getBitfield());
 		
 		List<Peer> peers = trackerManager.getPeers(torrentSeed);
 		System.out.println("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
@@ -127,6 +124,10 @@ public class DownloadManager {
 		syncDownloadTasksToDisk();
 	}
 	
+	public DownloadTask getDownloadTask(String infoHash) {
+		return this.downloadTasks.get(infoHash);
+	}
+	
 	// Any file download task is updated, this method should be called to sync the changing to disk.
 	private void syncDownloadTasksToDisk() throws Exception {
 		// TODO: Lock the file? Optimize the logic?
@@ -158,12 +159,78 @@ public class DownloadManager {
 		if(isPieceCompleted)
 			this.connectionManager.notifyPeersIHavePiece(infoHash, index);
 	}
-	
-	public DownloadTask getDownloadTask(String infoHash) {
-		return this.downloadTasks.get(infoHash);
+		
+	public void downloadMoreSlices(String infoHash, PeerConnection connection) throws Exception {
+		/*
+		 * 1. Check the slices one by one and see whether there is peer which has this slice and is not choking me.
+		 * 
+		 * 2. Check the bitfield of the fastest peer and pick the slice this peer has but I do not have it yet. 
+		 * 
+		 * 3. Download slices from the peers who unchoked me.
+		 * 
+		 * 
+		 */
+		FileMetadata fileMetadata = this.getDownloadTask(infoHash).getFileMetadata();
+		if(fileMetadata.isAllPiecesCompleted())
+			return;
+		
+		int indexDownloading = connection.getIndexPieceDownloading();
+		
+	    int j = -1;
+		if(-1 == indexDownloading) {
+			BitSet selfBitfield = fileMetadata.getBitfield();
+		    BitSet peerBitfield = connection.getPeer().getBitfield();
+
+		    for(int i = 0; i < peerBitfield.length(); i++) {
+			    if(peerBitfield.get(i) && !selfBitfield.get(i)) {
+				    List<Integer> indexes = this.indexPiecesDownloading.get(infoHash);
+				    if(null == indexes) {
+				    	indexes = new ArrayList<Integer>();
+				    	this.indexPiecesDownloading.put(infoHash, indexes);
+				    	indexes.add(i);
+				    	j = i;
+				    	break;
+				    }else {
+				        if(!indexes.contains(i)) {
+					        indexes.add(i);
+					        j = i;
+					        break;
+				        }
+				    }
+			    }
+		    }
+		}
+		
+		if(-1 != j) {
+			indexDownloading = j;
+		}
+		
+		if(-1 != indexDownloading) {
+			List<Slice> slices = new ArrayList<Slice>();
+			for(int i = 0; i < DownloadManager.REQUEST_MESSAGE_BATCH_SIZE; i++) {
+				Slice slice = fileMetadata.getNextIncompletedSlice();
+				if(null == slice)
+					break;
+				slices.add(slice);
+			}
+			if(0 != slices.size()) {
+				connection.setIndexPieceDownloading(indexDownloading);
+				connection.setRequestMessagesSent(slices.size());
+				List<PeerMessage> peerMessages = new ArrayList<PeerMessage>();
+				for(Slice slice : slices) {
+					peerMessages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
+					connection.addMessageToSend(peerMessages);
+				}
+			}else {
+				// One pieces is completed, try to find next one to download.
+				this.indexPiecesDownloading.get(infoHash).remove(indexDownloading);
+				connection.setIndexPieceDownloading(-1);
+				downloadMoreSlices(infoHash, connection);
+			}
+		}
 	}
+
 	
-	public void downloadMoreSlices(String infoHash) throws Exception {
-		this.pieceSelectStrategy.downloadNextSlice(infoHash);
-	}
+	public static final int REQUEST_MESSAGE_BATCH_SIZE = 4;
+	private Map<String, List<Integer>> indexPiecesDownloading = new HashMap<String, List<Integer>>();
 }

@@ -4,7 +4,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.BitSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.fruits.bt.PeerMessage.BitfieldMessage;
@@ -54,6 +56,10 @@ public class PeerConnection {
 	
 	private long timeLastReadWriteMessage;
 	
+	private int indexPieceDownloading = -1;
+	private int requestMessagesSent;
+	private int pieceMessageReceived;
+	
 	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
 		this.isOutgoingConnect = isOutgoingConnect;
 		this.socketChannel = socketChannel;
@@ -80,7 +86,6 @@ public class PeerConnection {
 			
 			//TODO: DownloadManager should not appear here?
 			this.self.setInfoHash(infoHash);
-			this.self.setBitfield(this.downloadManager.getBitfield(infoHash));
 			this.state = State.IN_HANDSHAKE_MESSAGE_RECEIVED;
 			System.out.println("Status : " + this.state + ", received handshake message [" + handshakeMessage + "].");			
 		}
@@ -158,7 +163,7 @@ public class PeerConnection {
 			}else if(peerMessage instanceof UnchokeMessage) {
 				this.choked = false;
 				// TODO:
-				this.downloadManager.downloadMoreSlices(this.self.getInfoHash());
+				this.downloadManager.downloadMoreSlices(this.self.getInfoHash(), this);
 			}else if(peerMessage instanceof InterestedMessage) {
 				this.interested = true;
 			}else if(peerMessage instanceof NotInterestedMessage) {
@@ -168,7 +173,9 @@ public class PeerConnection {
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
 				
 				// TODO:
-				this.downloadManager.downloadMoreSlices(self.getInfoHash());
+				if(!this.choked) {
+				    this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
+				}
 			}else if(peerMessage instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
 			}else if(peerMessage instanceof RequestMessage) {
@@ -182,8 +189,12 @@ public class PeerConnection {
 				PieceMessage piece = (PieceMessage)peerMessage;
 				// Is it OK to use .limit() to get the length of the ByteBuffer?
 				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
-				// TODO:
-				this.downloadManager.downloadMoreSlices(self.getInfoHash());
+				this.pieceMessageReceived++;
+				if(this.pieceMessageReceived == this.requestMessagesSent) {
+					this.pieceMessageReceived = 0;
+					this.requestMessagesSent = 0;
+				    this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
+				}
 			}else if(peerMessage instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage)peerMessage;
 				// TODO: Check the queue of received messages and the queue of outgoing messages, if it's there remove it from the queue.
@@ -228,8 +239,9 @@ public class PeerConnection {
 		
 		if (State.IN_BITFIELD_RECEIVED == this.state) {
 			if(!peerMessageHandler.isSendingMessageInProgress()) {
-				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + self.getBitfield() + "].");
-				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(self.getBitfield());
+				BitSet bitfield  = this.downloadManager.getBitfield(self.getInfoHash());
+				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
+				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				peerMessageHandler.setMessageToSend(bitfieldMessage);
 			}else {
 				System.out.println("Status : " + this.state + ", writing remaining part of bitfield message to peer.");
@@ -274,8 +286,9 @@ public class PeerConnection {
 		
 		if(State.OUT_HANDSHAKE_MESSAGE_RECEIVED == this.state) {
 			if(!peerMessageHandler.isSendingMessageInProgress()) {
-				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + self.getBitfield() + "].");
-				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(self.getBitfield());
+				BitSet bitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
+				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				peerMessageHandler.setMessageToSend(bitfieldMessage);
 			}else {
 				System.out.println("Status : " + this.state + ", writing remaining part of bitfield message to peer.");
@@ -329,6 +342,18 @@ public class PeerConnection {
 		// TODO: Handling exception.
 		this.messagesToSend.put(peerMessage);
 		System.out.println("Status : " + this.state + ", an outgoing message was added to queue : " + peerMessage + ".");
+		
+		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
+			this.startSendMessagesInQueue();
+		}
+	}
+	
+	public void addMessageToSend(List<PeerMessage> peerMessages) throws Exception {
+		// TODO: Handling exception.
+		for(PeerMessage peerMessage : peerMessages) {
+		    this.messagesToSend.put(peerMessage);
+		}
+		System.out.println("Status : " + this.state + ", outgoing messages were added to queue : " + peerMessages + ".");
 		
 		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
 			this.startSendMessagesInQueue();
@@ -397,5 +422,21 @@ public class PeerConnection {
 
 	public PeerMessageHandler getPeerMessageHandler() {
 		return peerMessageHandler;
+	}
+
+	public int getIndexPieceDownloading() {
+		return indexPieceDownloading;
+	}
+
+	public void setIndexPieceDownloading(int indexPieceDownloading) {
+		this.indexPieceDownloading = indexPieceDownloading;
+	}
+
+	public int getRequestMessagesSent() {
+		return requestMessagesSent;
+	}
+
+	public void setRequestMessagesSent(int requestMessagesSent) {
+		this.requestMessagesSent = requestMessagesSent;
 	}
 }
