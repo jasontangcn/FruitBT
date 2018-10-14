@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -17,6 +19,9 @@ public class FileMetadata implements Serializable {
 	private String filePath;
 	private List<Piece> pieces;
 	private int piecesCompleted;
+	
+	private transient RandomAccessFile tempFile;
+	private transient FileChannel channel;
 	
 	public FileMetadata(TorrentSeed seed) throws Exception {
 		this.seed = seed;
@@ -77,14 +82,23 @@ public class FileMetadata implements Serializable {
 	
 	// @ return Slices of current piece are completed?
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws Exception {
+		System.out.println("Thread : " + Thread.currentThread() + " is writing slices.");
 		// int or long?
 		int startPosition = (this.seed.getPieceLength() * index) + begin; // 0 based -> 
-		RandomAccessFile tempFile = new RandomAccessFile(this.filePath,"rw");
-		tempFile.seek(startPosition);
-		//TODO: length or data.array().length?
-		tempFile.write(data.array(), 0, length);
-		tempFile.close();
+		if(null == tempFile) {
+			tempFile = new RandomAccessFile(this.filePath,"rws");
+			channel = tempFile.getChannel();
+		}
 		
+		FileLock lock = channel.lock();
+		channel.position(startPosition);
+		channel.write(data);
+		//tempFile.seek(startPosition);
+		//TODO: length or data.array().length?
+		//tempFile.write(data.array(), 0, length);
+		lock.release();
+
+
 		this.pieces.get(index).setSliceCompleted(begin);
 		
 		boolean isPieceCompleted = pieces.get(index).isAllSlicesCompleted();
@@ -93,6 +107,20 @@ public class FileMetadata implements Serializable {
 		}
 		
 		if(isAllPiecesCompleted()) {
+			try {
+			    this.channel.close();
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			try {
+			    this.tempFile.close();
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+/*
+		if(isAllPiecesCompleted()) {
 			System.out.println("All of the pieces are completed.");
 			File file = new File(filePath);
 			String newFilePath = Client.DOWNLOAD_TEMP_DIR + "\\\\" + seed.getName();
@@ -100,7 +128,7 @@ public class FileMetadata implements Serializable {
 			
 			this.filePath = newFilePath;
 		}
-		
+*/
 		return isPieceCompleted;
 	}
 	
@@ -134,6 +162,10 @@ public class FileMetadata implements Serializable {
 		return null;
 	}
 
+	public List<Slice> getNextIncompletedSlices(int index, int batchSize) {
+        return this.pieces.get(index).getNextIncompletedSlices(batchSize);
+	}
+	
 	public List<Slice> getIncompletedSlices(){
 		List<Slice> incompletedSlices = new ArrayList<Slice>();
 		for(Piece piece : pieces) {

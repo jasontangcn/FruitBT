@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.fruits.bt.PeerConnection.State;
+import com.fruits.bt.PeerMessage.ChokeMessage;
 import com.fruits.bt.PeerMessage.HaveMessage;
+import com.fruits.bt.PeerMessage.UnchokeMessage;
 
 public class PeerConnectionManager implements Runnable {
 	private Thread managerThread = null;
@@ -46,18 +48,20 @@ public class PeerConnectionManager implements Runnable {
 		
 		choker.scheduleAtFixedRate(new Runnable() {
 			public void run() {
+				System.out.println("Choker is working.");
+				
 				Iterator<String> iterator = peerConnections.keySet().iterator();
 				while(iterator.hasNext()) {
-					System.out.println("Calculating download/upload rate of connections");
-					List<PeerConnection> connections = peerConnections.get(iterator.next());
+					System.out.println("Calculating download/upload rate in the past 10 seconds.");
+					String infoHash = iterator.next();
+					List<PeerConnection> connections = peerConnections.get(infoHash);
 					for(PeerConnection connection : connections) {
-						connection.getPeerMessageHandler().calculateReadWriteRate();
+						connection.getMessageHandler().calculateReadWriteRate();
 					}
-					
 					connections.sort(new Comparator<PeerConnection>() {
 						public int compare(PeerConnection o1, PeerConnection o2) {
 							if(o1.isChoked() == o2.isChoked()) {
-								return Float.compare(o2.getPeerMessageHandler().getReadPieceRate(), o1.getPeerMessageHandler().getReadPieceRate());
+								return Float.compare(o2.getMessageHandler().getReadRate(), o1.getMessageHandler().getReadRate());
 							}else {
 								if(o1.isChoked()) {
 									return -1;
@@ -67,8 +71,11 @@ public class PeerConnectionManager implements Runnable {
 							}
 						}
 					});
-					
+					// Unchoke 4 peers based on download rate, and randomly pick one as 'optimistic unchoking'.
 					int n = connections.size();
+					
+					System.out.println("Choker-> connections size : " + n + " for " + infoHash + ".");
+					
 					if(n > 5) {
 						Random random = new Random();
 						int j = random.nextInt(n - 4);
@@ -84,29 +91,42 @@ public class PeerConnectionManager implements Runnable {
 						PeerConnection connection = connections.get(i);
 						if(i < 5) {
 							if(connection.isChoking()) {
+								System.out.println("Choker-> I am going to unchoke connecton " + connection + ".");
 								connection.setChoking(false);
-							    // TODO: Send UnchokeMessage.
+								UnchokeMessage unchokeMessage = new UnchokeMessage();
+								try {
+								    connection.addMessageToSend(unchokeMessage);
+								}catch(Exception e) {
+									e.printStackTrace();
+								}
 							}
 						}else{
 							if(!connection.isChoking()) {
 								connection.setChoking(true);
-								// TODO: Send ChokeMessage
+								
+								ChokeMessage chokeMessage = new ChokeMessage();
+								try {
+								    connection.addMessageToSend(chokeMessage);
+								}catch(Exception e) {
+									e.printStackTrace();
+								}
 							}
 						}
 					}
 				}
 			}
-		}, 10L, 10L, TimeUnit.SECONDS);
+		}, 10L, 20L, TimeUnit.SECONDS);
 		
 		
 		aliveChecker.scheduleAtFixedRate(new Runnable() {
 			public void run() {
+				System.out.println("AliveChecker is working.");
 				Iterator<String> iterator = peerConnections.keySet().iterator();
 				while(iterator.hasNext()) {
 				    List<PeerConnection> connections = peerConnections.get(iterator.next());
 				    for(PeerConnection connection : connections) {
 				    	try {
-					        connection.checkAliveAndKeepAlive();
+					        connection.checkAliveKeepAlive();
 				    	}catch(Exception e) {
 				    		e.printStackTrace();
 				    	}
@@ -163,16 +183,16 @@ public class PeerConnectionManager implements Runnable {
 						socketChannel.configureBlocking(false);
 						System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
 	
-						PeerConnection peerConnection = new PeerConnection(false, socketChannel, this, downloadManager);
+						PeerConnection connection = new PeerConnection(false, socketChannel, this, downloadManager);
 						Peer self = new Peer();
 						//TODO: peerId managing.
 						self.setPeerId(Client.PEER_ID);
 						self.setAddress((InetSocketAddress)socketChannel.getLocalAddress());
 						// self.setLocal((InetSocketAddress)serverSocket.getLocalAddress());
-						peerConnection.setSelf(self);
-						peerConnection.setState(State.IN_ACCEPTED);
+						connection.setSelf(self);
+						connection.setState(State.IN_ACCEPTED);
 						
-						socketChannel.register(selector, SelectionKey.OP_READ, peerConnection);
+						socketChannel.register(selector, SelectionKey.OP_READ, connection);
 					} else if (key.isReadable()) {
 						System.out.println("[In Selector] Ready to read.");
 						((PeerConnection) key.attachment()).readMessage();
@@ -182,11 +202,11 @@ public class PeerConnectionManager implements Runnable {
 					} else if (key.isConnectable()) {						
 						System.out.println("[In Selector] Ready to connect to remote peer.");
 						SocketChannel socketChannel = (SocketChannel) key.channel();
-						PeerConnection peerConnection = (PeerConnection) key.attachment();
+						PeerConnection connection = (PeerConnection) key.attachment();
 						if (socketChannel.finishConnect()) {
 							System.out.println("[In Selector] Completed outgoing connecting to peer.");
-							peerConnection.setState(State.OUT_CONNECTED);
-							peerConnection.writeMessage();
+							connection.setState(State.OUT_CONNECTED);
+							connection.writeMessage();
 						}
 					}
 				}
@@ -204,17 +224,17 @@ public class PeerConnectionManager implements Runnable {
 		// TODO: Random binding to local address?
 		socketChannel.connect(peer.getAddress());
 		System.out.println("Connection to " + peer.getAddress() + ".");
-		PeerConnection peerConnection = new PeerConnection(true, socketChannel, this, downloadManager);
+		PeerConnection connection = new PeerConnection(true, socketChannel, this, downloadManager);
 
 		self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
-		peerConnection.setSelf(self);
-		peerConnection.setPeer(peer);
+		connection.setSelf(self);
+		connection.setPeer(peer);
 		
 		// TODO: VERY IMPORTANT!
 		// selector.select() is blocking, and register() is blocking too.
-		register(socketChannel, SelectionKey.OP_CONNECT, peerConnection);
+		register(socketChannel, SelectionKey.OP_CONNECT, connection);
 		        
-        return peerConnection;
+        return connection;
 	}
 
 	public void stop() throws Exception {
@@ -282,20 +302,20 @@ public class PeerConnectionManager implements Runnable {
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) throws Exception {
 		BitSet selfBitfield = this.downloadManager.getBitfield(infoHash);
 		
-		List<PeerConnection> peerConnections = this.peerConnections.get(infoHash);
-		for(PeerConnection peerConnection : peerConnections) {
-			BitSet peerBitfield = peerConnection.getPeer().getBitfield();
-			boolean interesting = peerConnection.isInteresting();
+		List<PeerConnection> connections = this.peerConnections.get(infoHash);
+		for(PeerConnection connection : connections) {
+			BitSet peerBitfield = connection.getPeer().getBitfield();
+			boolean interesting = connection.isInteresting();
 			boolean interestingNew = PeerConnection.isInterested(selfBitfield, peerBitfield);
 			if(interesting && !interestingNew) {
 			    PeerMessage.NotInterestedMessage notInterestedMessage = new PeerMessage.NotInterestedMessage();
-			    peerConnection.addMessageToSend(notInterestedMessage);
+			    connection.addMessageToSend(notInterestedMessage);
 			}
-			peerConnection.setInteresting(interestingNew);
+			connection.setInteresting(interestingNew);
 			
-			if(!peerConnection.isInterested())
+			if(!connection.isInterested())
 				break;
-			peerConnection.addMessageToSend(new HaveMessage(pieceIndex));
+			connection.addMessageToSend(new HaveMessage(pieceIndex));
 		}
 	}
 	

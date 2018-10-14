@@ -4,11 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
-import java.util.Timer;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 import com.fruits.bt.PeerMessage.PieceMessage;
 
 /*
@@ -20,42 +15,51 @@ public class PeerMessageHandler {
 	private int lengthPrefix = -1;
 	private final SocketChannel socketChannel;
 	// TODO: Check the definition in TorrentSeed.
-	private ByteBuffer messageBytes = ByteBuffer.allocate(4 + 9 + 16 * 1024 * 4); // the longest message is piece
+	private ByteBuffer readBuffer = ByteBuffer.allocate(4 + 9 + 16 * 1024 * 4); // the longest message is piece
 	private PeerMessage messageToSend;
-	private ByteBuffer messageBytesOut;
+	private ByteBuffer messageBytesToWrite;
 
-	private long pieceMessageBytesRead;
-	private long pieceMessageBytesWrite;
+	private long bytesRead;
+	private long bytesWritten;
 	
 	// A separate thread will calculate the download rate and upload rate by every 10 seconds.
-	private long pieceMessageBytesReadLastPeriod;
-	private long timeLastReadPiece = System.currentTimeMillis();
-	private long timeLastWritePiece = System.currentTimeMillis();
-	private long pieceMessageBytesWriteLastPeriod;
-	private float readPieceRate;
-	private float writePieceRate;
+	private long bytesReadPrePeriod;
+	private long timePreRead = System.currentTimeMillis();
+	private long timePreWrite = System.currentTimeMillis();
+	private long bytesWritePrePeriod;
+	private float readRate;
+	private float writeRate;
 
+	public static enum SendState {
+		IDLE(-1), READY(1), SENDING(2), DONE(3);
+
+		private int stateId;
+
+		SendState(int stateId) {
+			this.stateId = stateId;
+		}
+	}
+	
+	private SendState state = SendState.IDLE;
 	
 	public PeerMessageHandler(SocketChannel socketChannel) {
 		this.socketChannel = socketChannel;
 	}
 	
 	public void calculateReadWriteRate() {
-		// bytes read/MS
-		this.readPieceRate = ((this.pieceMessageBytesRead - this.pieceMessageBytesReadLastPeriod) / (System.currentTimeMillis() - this.timeLastReadPiece));
-		// bytes write/MS
-		this.writePieceRate = ((this.pieceMessageBytesWrite - this.pieceMessageBytesWriteLastPeriod) / (System.currentTimeMillis() - this.timeLastWritePiece));
+		// bytes read/ms
+		this.readRate = ((this.bytesRead - this.bytesReadPrePeriod) / (System.currentTimeMillis() - this.timePreRead));
+		// bytes write/ms
+		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / (System.currentTimeMillis() - this.timePreWrite));
 		
-		System.out.println("PeerMessageHandler [pieceMessageBytesReadLastPeriod = " + pieceMessageBytesReadLastPeriod
-				 + ", pieceMessageBytesRead = " + pieceMessageBytesRead + ", timeLastReadPiece = " + timeLastWritePiece + 
-				 ",\n" + "pieceMessageBytesWrite = " + pieceMessageBytesWrite + ", pieceMessageBytesWriteLastPeriod = " + pieceMessageBytesWriteLastPeriod 
-		 + ", timeLastWritePiece = " + timeLastReadPiece +
-		 ",\n" + "readPieceRate=" + readPieceRate + " byte/ms , writePieceRate=" + writePieceRate + " bytes/ms]." + "\n");
+		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePreRead + ",\n"
+				+ "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n" 
+				+ "readRate = " + readRate + " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
 		
-		this.pieceMessageBytesReadLastPeriod = this.pieceMessageBytesRead;
-		this.timeLastReadPiece = System.currentTimeMillis();
-		this.pieceMessageBytesWriteLastPeriod = this.pieceMessageBytesWrite;
-		this.timeLastWritePiece = System.currentTimeMillis();
+		this.bytesReadPrePeriod = this.bytesRead;
+		this.timePreRead = System.currentTimeMillis();
+		this.bytesWritePrePeriod = this.bytesWritten;
+		this.timePreWrite = System.currentTimeMillis();
 	}
 	// message type id
 	// <length prefix><message ID><payload>
@@ -72,30 +76,29 @@ public class PeerMessageHandler {
 	//           port : <len=0003><id=9><listen-port>
 	public PeerMessage readMessage() throws IOException {
 		if (-1 == lengthPrefix) {
-			this.messageBytes.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
-			socketChannel.read(messageBytes);
-			if (messageBytes.hasRemaining()) {
+			this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+			socketChannel.read(readBuffer);
+			if (readBuffer.hasRemaining()) {
 				return null;
 			}
-			this.lengthPrefix = messageBytes.getInt(0);
+			this.lengthPrefix = readBuffer.getInt(0);
 			System.out.println("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
-			messageBytes.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+			readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 		}
 
-		int count = socketChannel.read(messageBytes);
+		int count = socketChannel.read(readBuffer);
 		if(-1 == count)
 			return null; // TODO: should close the connection.
-		if (messageBytes.hasRemaining()) {
+		if (readBuffer.hasRemaining()) {
 			return null;
 		} else {
-			messageBytes.rewind();
-			ByteBuffer copy = ByteBuffer.wrap(Arrays.copyOf(messageBytes.array(), messageBytes.limit()));
+			readBuffer.rewind();
+			ByteBuffer copy = ByteBuffer.wrap(Arrays.copyOf(readBuffer.array(), readBuffer.limit()));
 			this.lengthPrefix = -1;
 	        PeerMessage peerMessage = PeerMessage.parseMessage(copy);
 	        
 	        if(peerMessage instanceof PieceMessage) {
-	        	int n = ((PieceMessage)peerMessage).getBlock().limit();
-				this.pieceMessageBytesRead += n;
+				this.bytesRead += ((PieceMessage)peerMessage).getBlock().limit();
 	        }
 	        
 	        return peerMessage;
@@ -104,47 +107,60 @@ public class PeerMessageHandler {
 	
 	// @return Message has been totally written to peer or not?
 	public boolean writeMessage() throws IOException {
+		if(SendState.READY == this.state) {
+			this.state = SendState.SENDING;
+		}else if(SendState.SENDING == this.state) {
+		}else {
+			throw new RuntimeException("PeerMessageHandler is in illegal status.");
+		}
+		
 		// TODO: if 0 bytes written, it leads to recrete the message.
 		do {
-			int n = socketChannel.write(this.messageBytesOut);
+			int n = socketChannel.write(this.messageBytesToWrite);
 			if(0 == n)
 				break;
-		}while(messageBytesOut.hasRemaining());
+		}while(messageBytesToWrite.hasRemaining());
 		
-		if(0 == messageBytesOut.remaining()) {
+		if(0 == messageBytesToWrite.remaining()) {
 			if(this.messageToSend instanceof PieceMessage) {
-				int n = ((PieceMessage)messageToSend).getBlock().limit();
-				this.pieceMessageBytesWrite += n;
+				this.bytesWritten += ((PieceMessage)messageToSend).getBlock().limit();
 			}
 		}
 		
-		return !messageBytesOut.hasRemaining();
+		boolean hasRemaining = messageBytesToWrite.hasRemaining();
+		
+		if(!hasRemaining)
+			this.state = SendState.IDLE;
+	
+		
+		return !hasRemaining;
 	}
 	
 	public void setMessageToSend(PeerMessage messageToSend) {
-		this.messageToSend = messageToSend;
-		this.messageBytesOut =  messageToSend.encode();
+		if(SendState.IDLE == this.state || SendState.READY == this.state) {
+		    this.messageToSend = messageToSend;
+		    this.messageBytesToWrite =  messageToSend.encode();
+		    this.state = SendState.READY;
+		}else {
+			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
+		}
 	}
 
-	public ByteBuffer getMessageBytesOut() {
-		return messageBytesOut;
+	public ByteBuffer getMessageBytesToWrite() {
+		return messageBytesToWrite;
 	}
 
-	public void setMessageBytesOut(ByteBuffer messageBytesOut) {
-		this.messageBytesOut = messageBytesOut;
+	public boolean isSendingInProgress() {
+		return SendState.SENDING == this.state;
 	}
 
-	public boolean isSendingMessageInProgress() {
-		return (null != this.messageBytesOut) && this.messageBytesOut.hasRemaining();
-	}
-
-	public float getReadPieceRate() {
+	public float getReadRate() {
 		calculateReadWriteRate();
-		return this.readPieceRate;
+		return this.readRate;
 	}
 
-	public float getWritePieceRate() {
+	public float getWriteRate() {
 		calculateReadWriteRate();
-		return this.writePieceRate;
+		return this.writeRate;
 	}
 }

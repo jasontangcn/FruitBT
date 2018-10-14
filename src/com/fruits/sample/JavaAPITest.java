@@ -1,21 +1,15 @@
 package com.fruits.sample;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import com.fruits.bt.PeerConnection;
+import java.util.BitSet;
 
 public class JavaAPITest {
 
 	public static void main(String[] args) throws Exception {
-		/*
-		BitSet bitset = new BitSet(801);
+		
+		BitSet bitset = new BitSet(85);
 		System.out.println(bitset.length());
 		System.out.println(bitset.size());
-		for (int i = 0; i < 801; i++) {
+		for (int i = 0; i < 85; i++) {
 			if (0 == (i % 2))
 				bitset.set(i);
 			else
@@ -24,7 +18,7 @@ public class JavaAPITest {
 
 		System.out.println(bitset.length());
 		System.out.println(bitset.toByteArray().length);
-		*/
+		
 
 		// System.out.println("BitTorrent protocol".getBytes().length);
 		
@@ -69,7 +63,7 @@ public class JavaAPITest {
 
 			}}, 0L, 2, TimeUnit.SECONDS);
 	    */
-		
+		/*
 		Rate[] rates = {new Rate(false, 10f), new Rate(false, 20f), new Rate(true, 0.5f), new Rate(false, 0.1f), new Rate(true, 30f), new Rate(true, 30f), new Rate(false, 15f), new Rate(true, 34f)};
 		Arrays.sort(rates, new Comparator<Rate>() {
 			public int compare(Rate o1, Rate o2) {
@@ -88,7 +82,7 @@ public class JavaAPITest {
 		for(Rate rate : rates) {
 			System.out.println(rate);
 		}
-		
+		*/
 	}
 	
 	public static class Rate {

@@ -1,6 +1,7 @@
 package com.fruits.bt;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Piece implements Serializable {
@@ -39,6 +40,22 @@ public class Piece implements Serializable {
 			if(!slice.isCompleted()) return slice;
 		}
 		return null;
+	}
+	
+	public List<Slice> getNextIncompletedSlices(int batchSize) {
+		List<Slice> slices = new ArrayList<Slice>();
+		int n = 0;
+		
+		for(Slice slice : this.slices) {
+			if(!slice.isCompleted()) {
+				slices.add(slice);
+				n++;
+				if(batchSize == n)
+					break;
+			}
+		}
+		
+		return slices;
 	}
 	
 	public boolean isAllSlicesCompleted() {
