@@ -174,7 +174,7 @@ public class DownloadManager {
 		if(fileMetadata.isAllPiecesCompleted())
 			return;
 		
-		int indexDownloading = connection.getIndexPieceDownloading();
+		int indexDownloading = connection.getPieceIndexDownloading();
 		
 	    int j = -1;
 		if(-1 == indexDownloading) {
@@ -214,8 +214,8 @@ public class DownloadManager {
 				slices.add(slice);
 			}
 			if(0 != slices.size()) {
-				connection.setIndexPieceDownloading(indexDownloading);
-				connection.setRequestMessagesSent(slices.size());
+				connection.setPieceIndexDownloading(indexDownloading);
+				connection.setRequestMessageSent(slices.size());
 				List<PeerMessage> peerMessages = new ArrayList<PeerMessage>();
 				for(Slice slice : slices) {
 					peerMessages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
@@ -224,7 +224,7 @@ public class DownloadManager {
 			}else {
 				// One pieces is completed, try to find next one to download.
 				this.indexPiecesDownloading.get(infoHash).remove(indexDownloading);
-				connection.setIndexPieceDownloading(-1);
+				connection.setPieceIndexDownloading(-1);
 				downloadMoreSlices(infoHash, connection);
 			}
 		}

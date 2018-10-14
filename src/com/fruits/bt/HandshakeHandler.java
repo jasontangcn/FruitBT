@@ -7,7 +7,7 @@ import java.nio.channels.SocketChannel;
 public class HandshakeHandler {
 	private final SocketChannel socketChannel;
 	
-	private ByteBuffer messageBytesIn = ByteBuffer.allocate(HandshakeMessage.HANDSHAKE_MESSAGE_LENGTH);
+	private ByteBuffer readBuffer = ByteBuffer.allocate(HandshakeMessage.HANDSHAKE_MESSAGE_LENGTH);
 	private ByteBuffer messageBytesToSend;
 			
 	public HandshakeHandler(SocketChannel socketChannel) {
@@ -15,7 +15,7 @@ public class HandshakeHandler {
 	}
 	
 	public HandshakeMessage readMessage() throws IOException {
-		if (-1 == socketChannel.read(messageBytesIn)) {
+		if (-1 == socketChannel.read(readBuffer)) {
 			// Channel is closed? 
 			// To close the channel? 
 			// To unregister the channel from the Selector with the cancel() method?
@@ -23,10 +23,10 @@ public class HandshakeHandler {
 			this.socketChannel.close();
 			return null;
 		} else {
-			if (messageBytesIn.hasRemaining())
+			if (readBuffer.hasRemaining())
 				return null;
-			messageBytesIn.flip();
-			return HandshakeMessage.decode(messageBytesIn);
+			readBuffer.flip();
+			return HandshakeMessage.decode(readBuffer);
 		}
 	}
 
@@ -48,11 +48,11 @@ public class HandshakeHandler {
 		}
 	}
 	
-	public void setHandshakeMessageToSend(HandshakeMessage handshakeMessage) {
-		this.messageBytesToSend =  HandshakeMessage.encode(handshakeMessage);
+	public void setMessageToSend(HandshakeMessage message) {
+		this.messageBytesToSend =  HandshakeMessage.encode(message);
 	}
 
-	public boolean isSendingMessageInProgress() {
+	public boolean isSendingInProgress() {
 		return (null != messageBytesToSend) && messageBytesToSend.hasRemaining();
 	}
 }
