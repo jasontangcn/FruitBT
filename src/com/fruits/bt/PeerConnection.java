@@ -174,7 +174,7 @@ public class PeerConnection {
 			this.timeLastRead = System.currentTimeMillis();
 			
 			System.out.println("PeerConnection->readMessage: I got a message from peer [" + message + "].");
-
+			
             if(message instanceof KeepAliveMessage) {
 			}else if(message instanceof ChokeMessage) {
 				this.choked = true;
@@ -347,7 +347,6 @@ public class PeerConnection {
 		}
 		
 		if(State.OUT_HANDSHAKE_MESSAGE_RECEIVED == this.state) {
-
 			if(!messageHandler.isSendingInProgress()) {
 				BitSet bitfield = this.downloadManager.getBitfield(self.getInfoHash());
 				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
@@ -359,7 +358,6 @@ public class PeerConnection {
 			
 			messageHandler.writeMessage();
 			if(messageHandler.isSendingInProgress()) {
-
 				// OP_READ is unregistered.
 				System.out.println("Status : " + this.state + ", only partial bitfield message was written to peer.");
 				this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
@@ -380,7 +378,6 @@ public class PeerConnection {
 		
 		for(;;) {
 			if(!messageHandler.isSendingInProgress()) { // Nothing sent yet or completed sending a message.
-
 			    PeerMessage message = this.messagesToSend.poll();
 			    if(null == message) {
 			    	this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
@@ -392,7 +389,6 @@ public class PeerConnection {
 			}else {
 				System.out.println("Status : " + this.state + ", continue to send remaining part of current message.");
 			}
-
 			messageHandler.writeMessage();
 			if(messageHandler.isSendingInProgress()) {
 				System.out.println("Status : " + this.state + ", only partialessage was written to peer.");

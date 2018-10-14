@@ -221,7 +221,6 @@ public class DownloadManager {
 			}else {
 				// One pieces is completed, try to find next one to download.
 				this.indexPiecesDownloading.get(infoHash).remove(new Integer(indexDownloading));
-				this.indexPiecesDownloading.get(infoHash).remove(indexDownloading);
 				connection.setPieceIndexDownloading(-1);
 				downloadMoreSlices(infoHash, connection);
 			}
