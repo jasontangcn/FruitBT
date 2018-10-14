@@ -161,7 +161,7 @@ public class PeerConnection {
 				    this.addMessageToSend(interestedMessage);
 			    }
 			    // Send the messages that are put in queue during handshaking and bitfield exchanging.
-				startSendMessagesInQueue();
+			    startSendMessages();
 			}
 		}
 
@@ -187,7 +187,7 @@ public class PeerConnection {
 					}
 				}
 				
-				this.downloadManager.cancelDownload(self.getInfoHash(), this);
+				this.downloadManager.cancelDownloadPiece(self.getInfoHash(), this);
 				
 				this.indexDownloading = -1;
 				this.requestsSent = 0;
@@ -321,7 +321,7 @@ public class PeerConnection {
 				    this.addMessageToSend(interestedMessage);
 			    }
 			    // Send the messages that are put in queue during handshaking and bitfield exchanging.
-			    startSendMessagesInQueue();
+			    startSendMessages();
 			}
 		}
 		
@@ -369,11 +369,11 @@ public class PeerConnection {
 		}
 		
 		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
-			this.startSendMessagesInQueue();
+			this.startSendMessages();
 		}
 	}
 	
-	public void startSendMessagesInQueue() throws Exception {		
+	public void startSendMessages() throws Exception {		
 		System.out.println("Status : " + this.state + ", sending messages in queue.");
 		
 		for(;;) {
@@ -401,26 +401,57 @@ public class PeerConnection {
 		}
 	}
 	
-	public void addMessageToSend(PeerMessage peerMessage) throws Exception {
+	public void addMessageToSend(PeerMessage message) throws Exception {
 		// TODO: Handling exception.
-		this.messagesToSend.put(peerMessage);
-		System.out.println("Status : " + this.state + ", an outgoing message was added to queue : " + peerMessage + ".");
+		this.messagesToSend.put(message);
+		System.out.println("Status : " + this.state + ", an outgoing message was added to queue : " + message + ".");
 		
 		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
-			this.startSendMessagesInQueue();
+			this.startSendMessages();
 		}
 	}
 	
-	public void addMessageToSend(List<PeerMessage> peerMessages) throws Exception {
+	public void addMessageToSend(List<PeerMessage> messages) throws Exception {
 		// TODO: Handling exception.
-		for(PeerMessage peerMessage : peerMessages) {
-		    this.messagesToSend.put(peerMessage);
+		for(PeerMessage message : messages) {
+		    this.messagesToSend.put(message);
 		}
-		System.out.println("Status : " + this.state + ", outgoing messages were added to queue : " + peerMessages + ".");
+		System.out.println("Status : " + this.state + ", outgoing messages were added to queue : " + messages + ".");
 		
 		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
-			this.startSendMessagesInQueue();
+			this.startSendMessages();
 		}
+	}
+		
+	public static boolean isInterested(BitSet a, BitSet b) {
+		// TODO: validate parameters.
+		for(int i = 0; i< a.size(); i++) {
+			if(!a.get(i) && b.get(i)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void checkAliveAndKeepAlive() throws Exception {
+		System.out.println("Checking alives and keeping alives.");
+		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
+			long now = System.currentTimeMillis();
+			
+			if(now - this.timeLastWrite > 45 * 1000) {
+				PeerMessage.KeepAliveMessage keepAliveMessage = new PeerMessage.KeepAliveMessage();
+				this.addMessageToSend(keepAliveMessage);
+			}
+			
+			if(now - this.timeLastRead > 3 * 60 * 1000) {
+				this.close();
+			}
+		}
+	}
+	
+	// TODO: Connection managing.
+	public void close() throws Exception {
+		
 	}
 	
 	public State getState() {
@@ -501,35 +532,5 @@ public class PeerConnection {
 
 	public void setRequestsSent(int requestsSent) {
 		this.requestsSent = requestsSent;
-	}
-	
-	public static boolean isInterested(BitSet a, BitSet b) {
-		// TODO: validate parameters.
-		for(int i = 0; i< a.size(); i++) {
-			if(!a.get(i) && b.get(i)) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public void checkAliveKeepAlive() throws Exception {
-		System.out.println("Checking alives and keep alives.");
-		if (State.IN_EXCHANGE_BITFIELD_COMPLETED == this.state || State.OUT_EXCHANGE_BITFIELD_COMPLETED == this.state) {
-			long now = System.currentTimeMillis();
-			
-			if(now - this.timeLastWrite > 45 * 1000) {
-				PeerMessage.KeepAliveMessage keepAliveMessage = new PeerMessage.KeepAliveMessage();
-				this.addMessageToSend(keepAliveMessage);
-			}
-			
-			if(now - this.timeLastRead > 3 * 60 * 1000) {
-				this.close();
-			}
-		}
-	}
-	
-	public void close() throws Exception {
-		
 	}
 }

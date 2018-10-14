@@ -11,7 +11,8 @@ import java.util.BitSet;
 import java.util.List;
 
 public class FileMetadata implements Serializable {
-	// TODO:  Re-design serialVersionUID.
+	// TODO: VERY IMPORTANT!  
+	// Re-design serialVersionUID.
 	private static final long serialVersionUID = -8543915446727382746L;
 	
 	private final TorrentSeed seed;
@@ -81,6 +82,8 @@ public class FileMetadata implements Serializable {
 	}
 	
 	// @ return Slices of current piece are completed?
+	// TODO: VERY IMPORTANT!
+	// Previou verion we got IOException.
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws Exception {
 		System.out.println("Thread : " + Thread.currentThread() + " is writing slices.");
 		// int or long?
@@ -137,6 +140,8 @@ public class FileMetadata implements Serializable {
 	}
 	
 	public BitSet getBitfield() {
+		// TODO: VERY IMPORTANT! 
+		// BitSet do not have a fixed length/size, e.g. we have 85 pieces, but never bitfield.length or bitfield.size = 85.
 		// BitSet
 		// length() -> Returns the "logical size" of this BitSet: the index of the highest set bit in the BitSet plus one.
 		// size() -> Returns the number of bits of space actually in use by this BitSet to represent bit values. 

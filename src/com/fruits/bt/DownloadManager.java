@@ -169,14 +169,14 @@ public class DownloadManager {
 		 * 
 		 * 
 		 */
-		FileMetadata metadata = this.getDownloadTask(infoHash).getFileMetadata();
-		if(metadata.isAllPiecesCompleted())
+		FileMetadata fileMetadata = this.getDownloadTask(infoHash).getFileMetadata();
+		if(fileMetadata.isAllPiecesCompleted())
 			return;
 		
 		int index = connection.getIndexDownloading();
 		
 		if(-1 == index) {
-			BitSet selfBitfield = metadata.getBitfield();
+			BitSet selfBitfield = fileMetadata.getBitfield();
 		    BitSet peerBitfield = connection.getPeer().getBitfield();
 
 		    for(int i = 0; i < peerBitfield.size(); i++) {
@@ -201,7 +201,7 @@ public class DownloadManager {
 		
 		if(-1 != index) {
 			System.out.println("Downloading slices with index : " + index + ".");
-			List<Slice> slices = metadata.getNextBatchIncompletedSlices(index, REQUEST_MESSAGE_BATCH_SIZE);
+			List<Slice> slices = fileMetadata.getNextBatchIncompletedSlices(index, REQUEST_MESSAGE_BATCH_SIZE);
 
 			if(0 != slices.size()) {
 				// It may start a download a new piece or download the remaining slices of a piece.
@@ -223,7 +223,7 @@ public class DownloadManager {
 	}
 
 	
-	public void cancelDownload(String infoHash, PeerConnection connection) {
+	public void cancelDownloadPiece(String infoHash, PeerConnection connection) {
 		int indexDownloading = connection.getIndexDownloading();
 		if(-1 != indexDownloading) {
 			this.indexesDownloading.get(infoHash).remove(new Integer(indexDownloading));
