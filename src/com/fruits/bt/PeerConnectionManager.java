@@ -61,7 +61,11 @@ public class PeerConnectionManager implements Runnable {
 					connections.sort(new Comparator<PeerConnection>() {
 						public int compare(PeerConnection o1, PeerConnection o2) {
 							if(o1.isChoked() == o2.isChoked()) {
+<<<<<<< HEAD
 								return Float.compare(o2.getMessageHandler().getReadRate(), o1.getMessageHandler().getReadRate());
+=======
+								return Float.compare(o2.getPeerMessageHandler().getReadRate(), o1.getPeerMessageHandler().getReadRate());
+>>>>>>> refs/remotes/origin/master
 							}else {
 								if(o1.isChoked()) {
 									return -1;

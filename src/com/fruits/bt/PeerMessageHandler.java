@@ -107,6 +107,7 @@ public class PeerMessageHandler {
 	
 	// @return Message has been totally written to peer or not?
 	public boolean writeMessage() throws IOException {
+<<<<<<< HEAD
 		if(SendState.READY == this.state) {
 			this.state = SendState.SENDING;
 		}else if(SendState.SENDING == this.state) {
@@ -114,6 +115,13 @@ public class PeerMessageHandler {
 			throw new RuntimeException("PeerMessageHandler is in illegal status.");
 		}
 		
+=======
+		if(SendState.READY != this.state) {
+			throw new RuntimeException("PeerMessageHandler is in illegal status.");
+		}
+		
+		this.state = SendState.SENDING;
+>>>>>>> refs/remotes/origin/master
 		// TODO: if 0 bytes written, it leads to recrete the message.
 		do {
 			int n = socketChannel.write(this.messageBytesToWrite);
@@ -137,6 +145,7 @@ public class PeerMessageHandler {
 	}
 	
 	public void setMessageToSend(PeerMessage messageToSend) {
+<<<<<<< HEAD
 		if(SendState.IDLE == this.state || SendState.READY == this.state) {
 		    this.messageToSend = messageToSend;
 		    this.messageBytesToWrite =  messageToSend.encode();
@@ -144,6 +153,11 @@ public class PeerMessageHandler {
 		}else {
 			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
 		}
+=======
+		this.messageToSend = messageToSend;
+		this.messageBytesToWrite =  messageToSend.encode();
+		this.state = SendState.READY;
+>>>>>>> refs/remotes/origin/master
 	}
 
 	public ByteBuffer getMessageBytesToWrite() {

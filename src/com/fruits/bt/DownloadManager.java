@@ -220,7 +220,11 @@ public class DownloadManager {
 				connection.addMessageToSend(peerMessages);
 			}else {
 				// One pieces is completed, try to find next one to download.
+<<<<<<< HEAD
 				this.indexPiecesDownloading.get(infoHash).remove(new Integer(indexDownloading));
+=======
+				this.indexPiecesDownloading.get(infoHash).remove(indexDownloading);
+>>>>>>> refs/remotes/origin/master
 				connection.setPieceIndexDownloading(-1);
 				downloadMoreSlices(infoHash, connection);
 			}
