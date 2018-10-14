@@ -6,3 +6,11 @@
        A separate thread to handle the messages of a peer connection?
        
 2. Socket managing : Client will not crash because of single connection is closed.
+
+
+2018-10-14
+==========
+1. Exception handling.
+2. Multi Threads to read messages? handle messages/send messages?
+3. Logging
+4.
