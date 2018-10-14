@@ -115,7 +115,7 @@ public class PeerConnectionManager implements Runnable {
 					}
 				}
 			}
-		}, 10L, 20L, TimeUnit.SECONDS);
+		}, 10L, 5L, TimeUnit.SECONDS);
 		
 		
 		aliveChecker.scheduleAtFixedRate(new Runnable() {

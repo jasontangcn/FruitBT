@@ -57,9 +57,9 @@ public class PeerConnection {
 	private long timeLastRead;
 	private long timeLastWrite;
 	
-	private int pieceIndexDownloading = -1;
-	private int requestMessageSent;
-	private int pieceMessageReceived;
+	private int indexDownloading = -1;
+	private int requestsSent;
+	private int piecesReceived;
 	
 	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
 		this.isOutgoingConnect = isOutgoingConnect;
@@ -189,9 +189,9 @@ public class PeerConnection {
 				
 				this.downloadManager.cancelDownload(self.getInfoHash(), this);
 				
-				this.pieceIndexDownloading = -1;
-				this.requestMessageSent = 0;
-				this.pieceMessageReceived = 0;
+				this.indexDownloading = -1;
+				this.requestsSent = 0;
+				this.piecesReceived = 0;
 				
 			}else if(message instanceof UnchokeMessage) {
 				this.choked = false;
@@ -243,13 +243,13 @@ public class PeerConnection {
 				PieceMessage piece = (PieceMessage)message;
 				// Is it OK to use .limit() to get the length of the ByteBuffer?
 				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
-				this.pieceMessageReceived++;
+				this.piecesReceived++;
 				
-				System.out.println("PeerConnection->readMessage: Got a PieceMessage, pieceMessageReceived = " + this.pieceMessageReceived + ", and expected count is : " + this.requestMessageSent + ".");
+				System.out.println("PeerConnection->readMessage: Got a PieceMessage, pieceMessageReceived = " + this.piecesReceived + ", and expected count is : " + this.requestsSent + ".");
 				
-				if(this.pieceMessageReceived == this.requestMessageSent) {
-					this.pieceMessageReceived = 0;
-					this.requestMessageSent = 0;
+				if(this.piecesReceived == this.requestsSent) {
+					this.piecesReceived = 0;
+					this.requestsSent = 0;
 				    this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
 				}
 			}else if(message instanceof CancelMessage) {
@@ -487,20 +487,20 @@ public class PeerConnection {
 		return messageHandler;
 	}
 
-	public int getPieceIndexDownloading() {
-		return pieceIndexDownloading;
+	public int getIndexDownloading() {
+		return indexDownloading;
 	}
 
-	public void setPieceIndexDownloading(int pieceIndexDownloading) {
-		this.pieceIndexDownloading = pieceIndexDownloading;
+	public void setIndexDownloading(int indexDownloading) {
+		this.indexDownloading = indexDownloading;
 	}
 
-	public int getRequestMessageSent() {
-		return requestMessageSent;
+	public int getRequestsSent() {
+		return requestsSent;
 	}
 
-	public void setRequestMessageSent(int requestMessageSent) {
-		this.requestMessageSent = requestMessageSent;
+	public void setRequestsSent(int requestsSent) {
+		this.requestsSent = requestsSent;
 	}
 	
 	public static boolean isInterested(BitSet a, BitSet b) {

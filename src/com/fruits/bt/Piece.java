@@ -42,7 +42,7 @@ public class Piece implements Serializable {
 		return null;
 	}
 	
-	public List<Slice> getNextIncompletedSlices(int batchSize) {
+	public List<Slice> getNextBatchIncompletedSlices(int batchSize) {
 		List<Slice> slices = new ArrayList<Slice>();
 		int n = 0;
 		

@@ -162,8 +162,8 @@ public class FileMetadata implements Serializable {
 		return null;
 	}
 
-	public List<Slice> getNextIncompletedSlices(int index, int batchSize) {
-        return this.pieces.get(index).getNextIncompletedSlices(batchSize);
+	public List<Slice> getNextBatchIncompletedSlices(int index, int batchSize) {
+        return this.pieces.get(index).getNextBatchIncompletedSlices(batchSize);
 	}
 	
 	public List<Slice> getIncompletedSlices(){
