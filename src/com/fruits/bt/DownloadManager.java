@@ -29,7 +29,7 @@ public class DownloadManager {
 	private Map<String, DownloadTask> downloadTasks;
 
 	public static final int REQUEST_MESSAGE_BATCH_SIZE = 3;
-	private Map<String, List<Integer>> indexesDownloading = new HashMap<String, List<Integer>>();
+	private Map<String, List<Integer>> indexesRequesting = new HashMap<String, List<Integer>>();
 
 	public DownloadManager(PeerConnectionManager connectionManager) {
 		this.connectionManager = connectionManager;
@@ -49,29 +49,29 @@ public class DownloadManager {
 	}
 
 	private void loadDownloadTasks() {
-		File downloadTasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
+		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
 		// TODO: File.length() to check whether the file is empty or not, is it enough?
-		if (downloadTasksFile.length() > 0) {
+		if (tasksFile.length() > 0) {
 			// Load metadata for the files downloading or downloaded yet.
-			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(downloadTasksFile));
+			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(tasksFile));
 			Object obj = ois.readObject();
 			ois.close();
 
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
-			System.out.println("Loaded downloadTasks from disk : " + this.downloadTasks + ".");
+			System.out.println("Loaded download tasks from disk : " + this.downloadTasks + ".");
 		} else {
 			this.downloadTasks = new HashMap<String, DownloadTask>();
-			ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(downloadTasksFile));
+			ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(tasksFile));
 			oos.writeObject(this.downloadTasks);
 			oos.close();
 
-			System.out.println("Create a new downloadTasks.");
+			System.out.println("Created a new downloadTasks.");
 		}
 	}
 
 	public void startDownloadFile(String infoHash) {
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
-		downloadTask.setDownloadState(DownloadTask.DownloadState.STARTED);
+		downloadTask.setState(DownloadTask.DownloadState.STARTED);
 		FileMetadata fileMetada = downloadTask.getFileMetadata();
 		TorrentSeed torrentSeed = fileMetada.getSeed();
 		Peer self = new Peer();
@@ -83,9 +83,8 @@ public class DownloadManager {
 		List<Peer> peers = trackerManager.getPeers(torrentSeed);
 		System.out.println("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
 
-		PeerConnection connection = null;
 		for (Peer peer : peers) {
-			connection = connectionManager.createOutgoingConnection(self, peer);
+			connectionManager.createOutgoingConnection(self, peer);
 		}
 
 		// TODO: Test code, only download the first slice that is not downloaded yet.
@@ -113,11 +112,11 @@ public class DownloadManager {
 		DownloadTask downloadTask = new DownloadTask();
 
 		FileMetadata fileMetadata = new FileMetadata(torrentSeed);
-		downloadTask.setDownloadState(DownloadTask.DownloadState.PENDING);
+		downloadTask.setState(DownloadTask.DownloadState.PENDING);
 		downloadTask.setFileMetadata(fileMetadata);
 
 		this.downloadTasks.put(torrentSeed.getInfoHash(), downloadTask);
-		System.out.println("A new download task was added, downloadTasks length : " + this.downloadTasks.size() + ".");
+		System.out.println("New download task was added, downloadTasks length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
 	}
@@ -138,7 +137,7 @@ public class DownloadManager {
 
 	public BitSet getBitfield(String infoHash) {
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
-		if (null != downloadTask)
+		if (downloadTask != null)
 			return downloadTask.getFileMetadata().getBitfield();
 		else
 			return null;
@@ -149,8 +148,7 @@ public class DownloadManager {
 	}
 
 	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
-		boolean isPieceCompleted = this.downloadTasks.get(infoHash).getFileMetadata().writeSlice(index, begin, length,
-				data);
+		boolean isPieceCompleted = this.downloadTasks.get(infoHash).getFileMetadata().writeSlice(index, begin, length, data);
 
 		syncDownloadTasksToDisk();
 
@@ -159,7 +157,7 @@ public class DownloadManager {
 			this.connectionManager.notifyPeersIHavePiece(infoHash, index);
 	}
 
-	public void downloadMoreSlices(String infoHash, PeerConnection connection) {
+	public void requestMoreSlices(String infoHash, PeerConnection connection) {
 		/*
 		 * 1. Check the slices one by one and see whether there is peer which has this slice and is not choking me.
 		 * 
@@ -173,7 +171,7 @@ public class DownloadManager {
 		if (fileMetadata.isAllPiecesCompleted())
 			return;
 
-		int index = connection.getIndexDownloading();
+		int index = connection.getIndexRequesting();
 
 		if (index == -1) {
 			BitSet selfBitfield = fileMetadata.getBitfield();
@@ -181,10 +179,10 @@ public class DownloadManager {
 
 			for (int i = 0; i < peerBitfield.size(); i++) {
 				if (peerBitfield.get(i) && !selfBitfield.get(i)) {
-					List<Integer> indexes = this.indexesDownloading.get(infoHash);
+					List<Integer> indexes = this.indexesRequesting.get(infoHash);
 					if (indexes == null) {
 						indexes = new ArrayList<Integer>();
-						this.indexesDownloading.put(infoHash, indexes);
+						this.indexesRequesting.put(infoHash, indexes);
 						indexes.add(i);
 						index = i;
 						break;
@@ -199,33 +197,33 @@ public class DownloadManager {
 			}
 		}
 
-		if (-1 != index) {
-			System.out.println("Downloading slices with index : " + index + ".");
+		if (index != -1) {
+			System.out.println("Requesting slices with index : " + index + ".");
 			List<Slice> slices = fileMetadata.getNextBatchIncompletedSlices(index, REQUEST_MESSAGE_BATCH_SIZE);
 
-			if (0 != slices.size()) {
+			if (slices.size() != 0) {
 				// It may start a download a new piece or download the remaining slices of a piece.
-				connection.setIndexDownloading(index);
+				connection.setIndexRequesting(index);
 				connection.setRequestsSent(slices.size());
-				List<PeerMessage> requests = new ArrayList<PeerMessage>();
+				List<PeerMessage> messages = new ArrayList<PeerMessage>();
 				for (Slice slice : slices) {
-					requests.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
+					messages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 				}
 				System.out.println("Batch RequestMessage, messages size : " + slices.size() + ".");
-				connection.addMessageToSend(requests);
+				connection.addMessageToSend(messages);
 			} else {
 				// This pieces have been completed, try to find next one to download.
-				this.indexesDownloading.get(infoHash).remove(new Integer(index));
-				connection.setIndexDownloading(-1);
-				downloadMoreSlices(infoHash, connection);
+				this.indexesRequesting.get(infoHash).remove(new Integer(index)); // Be careful, new Integer(index) NOT index.
+				connection.setIndexRequesting(-1);
+				requestMoreSlices(infoHash, connection);
 			}
 		}
 	}
 
-	public void cancelDownloadPiece(String infoHash, PeerConnection connection) {
-		int indexDownloading = connection.getIndexDownloading();
-		if (-1 != indexDownloading) {
-			this.indexesDownloading.get(infoHash).remove(new Integer(indexDownloading));
+	public void cancelRequestPiece(String infoHash, PeerConnection connection) {
+		int indexRequesting = connection.getIndexRequesting();
+		if (indexRequesting != -1) {
+			this.indexesRequesting.get(infoHash).remove(new Integer(indexRequesting));
 		}
 	}
 }

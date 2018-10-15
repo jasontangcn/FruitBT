@@ -27,7 +27,7 @@ public class Piece implements Serializable {
 
 	public boolean setSliceCompleted(int begin) {
 		Slice slice = getSlice(begin);
-		if (null != slice) {
+		if (slice != null) {
 			slice.setCompleted(true);
 			return true;
 		} else {

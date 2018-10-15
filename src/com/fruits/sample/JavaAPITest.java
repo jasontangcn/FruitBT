@@ -7,6 +7,8 @@ public class JavaAPITest {
 	public static void main(String[] args) throws Exception {
 
 		BitSet bitset = new BitSet(85);
+		System.out.println(bitset.toByteArray());
+		/*
 		System.out.println(bitset.length());
 		System.out.println(bitset.size());
 		System.out.println(bitset.get(2));
@@ -14,6 +16,8 @@ public class JavaAPITest {
 		System.out.println(bitset.get(2000));
 		System.out.println(bitset.length());
 		System.out.println(bitset.size());
+		
+		*/
 		/*
 		for (int i = 0; i < 85; i++) {
 			if ((i % 2) == 0)

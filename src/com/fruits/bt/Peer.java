@@ -47,7 +47,6 @@ public class Peer {
 
 	@Override
 	public String toString() {
-		return "Peer [address=" + address + ", peerId=" + peerId + ", infoHash=" + infoHash + ", bitfield=" + bitfield
-				+ "].\n";
+		return "Peer [address=" + address + ", peerId=" + peerId + ", infoHash=" + infoHash + ", bitfield=" + bitfield + "].\n";
 	}
 }

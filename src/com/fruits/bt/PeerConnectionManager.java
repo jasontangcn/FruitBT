@@ -260,8 +260,8 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		System.out.println("New PeerConnection is created, is it outgoing connection? [" + connection.isOutgoingConnect()
-				+ "], infoHash = " + infoHash + ", [" + connection + "]");
+		System.out.println("New PeerConnection is created, is it outgoing connection? [" + connection.isOutgoingConnect() + "], infoHash = " + infoHash + ", ["
+				+ connection + "]");
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
 			connections = new ArrayList<PeerConnection>();
@@ -279,8 +279,7 @@ public class PeerConnectionManager implements Runnable {
 			selectorLock.lock();
 			System.out.println("Wakening the selector.");
 			selector.wakeup();
-			System.out.println("Registering channel : " + socketChannel + ", OPS = " + interestOps(ops) + ", attachment = "
-					+ attachment + ".");
+			System.out.println("Registering channel : " + socketChannel + ", OPS = " + interestOps(ops) + ", attachment = " + attachment + ".");
 			return socketChannel.register(selector, ops, attachment); // lots of exception may be thrown.
 		} finally {
 			selectorLock.unlock();

@@ -49,13 +49,11 @@ public class PeerMessageHandler {
 		// bytes read/ms
 		this.readRate = ((this.bytesRead - this.bytesReadPrePeriod) / (System.currentTimeMillis() - this.timePreRead));
 		// bytes write/ms
-		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod)
-				/ (System.currentTimeMillis() - this.timePreWrite));
+		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / (System.currentTimeMillis() - this.timePreWrite));
 
-		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead
-				+ ", timePreRead = " + timePreRead + ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = "
-				+ bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n" + "readRate = " + readRate
-				+ " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
+		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePreRead
+				+ ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n"
+				+ "readRate = " + readRate + " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
 
 		this.bytesReadPrePeriod = this.bytesRead;
 		this.timePreRead = System.currentTimeMillis();
@@ -144,8 +142,7 @@ public class PeerMessageHandler {
 			this.messageBytesToWrite = messageToSend.encode();
 			this.state = SendState.READY;
 		} else {
-			throw new RuntimeException(
-					"PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
+			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
 		}
 	}
 

@@ -51,6 +51,6 @@ public class HandshakeHandler {
 	}
 
 	public boolean isSendingInProgress() {
-		return (null != messageBytesToSend) && messageBytesToSend.hasRemaining();
+		return (messageBytesToSend != null) && messageBytesToSend.hasRemaining();
 	}
 }

@@ -34,8 +34,8 @@ public class Client {
 		REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
 		REMOTE_PEER_ID = props.getProperty("remote.peer.id");
 
-		System.out.println(DOWNLOAD_TASKS_TEMP_FILE + "," + DOWNLOAD_TEMP_DIR + "," + LISTENER_DOMAIN + "," + LISTENER_PORT + "," 
-		                   + PEER_ID + "," + REMOTE_DOMAIN + "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
+		System.out.println(DOWNLOAD_TASKS_TEMP_FILE + "," + DOWNLOAD_TEMP_DIR + "," + LISTENER_DOMAIN + "," + LISTENER_PORT + "," + PEER_ID + "," + REMOTE_DOMAIN
+				+ "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
 	}
 
 	public static void main(String[] args) {

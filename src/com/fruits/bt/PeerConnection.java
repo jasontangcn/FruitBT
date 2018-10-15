@@ -23,9 +23,8 @@ import com.fruits.bt.PeerMessage.UnchokeMessage;
 
 public class PeerConnection {
 	public enum State {
-		UNDEFINED(-1), OUT_CONNECTED(0), OUT_HANDSHAKE_MESSAGE_SENT(1), OUT_HANDSHAKE_MESSAGE_RECEIVED(2),
-		OUT_BITFIELD_SENT(3), OUT_EXCHANGE_BITFIELD_COMPLETED(4), IN_ACCEPTED(5), IN_HANDSHAKE_MESSAGE_RECEIVED(6),
-		IN_HANDSHAKE_MESSAGE_SENT(7), IN_BITFIELD_RECEIVED(8), IN_EXCHANGE_BITFIELD_COMPLETED(9);
+		UNDEFINED(-1), OUT_CONNECTED(0), OUT_HANDSHAKE_MESSAGE_SENT(1), OUT_HANDSHAKE_MESSAGE_RECEIVED(2), OUT_BITFIELD_SENT(3), OUT_EXCHANGE_BITFIELD_COMPLETED(4),
+		IN_ACCEPTED(5), IN_HANDSHAKE_MESSAGE_RECEIVED(6), IN_HANDSHAKE_MESSAGE_SENT(7), IN_BITFIELD_RECEIVED(8), IN_EXCHANGE_BITFIELD_COMPLETED(9);
 
 		private int stateId;
 
@@ -57,12 +56,11 @@ public class PeerConnection {
 	private long timeLastRead;
 	private long timeLastWrite;
 
-	private int indexDownloading = -1;
+	private int indexRequesting = -1;
 	private int requestsSent;
 	private int piecesReceived;
 
-	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager,
-			DownloadManager downloadManager) {
+	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
 		this.isOutgoingConnect = isOutgoingConnect;
 		this.socketChannel = socketChannel;
 		this.connectionManager = connectionManager;
@@ -150,8 +148,7 @@ public class PeerConnection {
 				BitSet peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
-				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()),
-						peerBitfield);
+				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
@@ -188,18 +185,17 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.cancelDownloadPiece(self.getInfoHash(), this);
+				this.downloadManager.cancelRequestPiece(self.getInfoHash(), this);
 
-				this.indexDownloading = -1;
+				this.indexRequesting = -1;
 				this.requestsSent = 0;
 				this.piecesReceived = 0;
 
 			} else if (message instanceof UnchokeMessage) {
 				this.choked = false;
-				System.out.println(
-						"PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
+				System.out.println("PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
 				if (this.interesting) {
-					this.downloadManager.downloadMoreSlices(this.self.getInfoHash(), this);
+					this.downloadManager.requestMoreSlices(this.self.getInfoHash(), this);
 				}
 			} else if (message instanceof InterestedMessage) {
 				this.interested = true;
@@ -220,8 +216,7 @@ public class PeerConnection {
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
 
 				if (!this.interesting) {
-					boolean interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()),
-							this.peer.getBitfield());
+					boolean interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), this.peer.getBitfield());
 					this.interesting = interested;
 					if (interested) {
 						PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
@@ -231,7 +226,7 @@ public class PeerConnection {
 
 				// TODO: XXXX
 				if (!this.choked && this.interesting) {
-					this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
+					this.downloadManager.requestMoreSlices(self.getInfoHash(), this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
@@ -245,17 +240,16 @@ public class PeerConnection {
 			} else if (message instanceof PieceMessage) {
 				PieceMessage piece = (PieceMessage) message;
 				// Is it OK to use .limit() to get the length of the ByteBuffer?
-				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(),
-						piece.getBlock().remaining(), piece.getBlock());
+				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
 				this.piecesReceived++;
 
-				System.out.println("PeerConnection->readMessage: Got a PieceMessage, pieceMessageReceived = "
-						+ this.piecesReceived + ", and expected count is : " + this.requestsSent + ".");
+				System.out.println("PeerConnection->readMessage: Got a PieceMessage, pieceMessageReceived = " + this.piecesReceived + ", and expected count is : "
+						+ this.requestsSent + ".");
 
 				if (this.piecesReceived == this.requestsSent) {
 					this.piecesReceived = 0;
 					this.requestsSent = 0;
-					this.downloadManager.downloadMoreSlices(self.getInfoHash(), this);
+					this.downloadManager.requestMoreSlices(self.getInfoHash(), this);
 				}
 			} else if (message instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage) message;
@@ -265,8 +259,7 @@ public class PeerConnection {
 					PeerMessage msg = it.next();
 					if (message instanceof PieceMessage) {
 						PieceMessage pieceMessage = (PieceMessage) message;
-						if ((pieceMessage.getIndex() == cancelMessage.getIndex())
-								&& (pieceMessage.getBegin() == cancelMessage.getBegin())) {
+						if ((pieceMessage.getIndex() == cancelMessage.getIndex()) && (pieceMessage.getBegin() == cancelMessage.getBegin())) {
 							it.remove();
 						}
 					}
@@ -281,10 +274,8 @@ public class PeerConnection {
 	public void writeMessage() {
 		if (this.state == State.IN_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!this.handshakeHandler.isSendingInProgress()) {
-				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()),
-						self.getPeerId().getBytes());
-				System.out
-						.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
+				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()), self.getPeerId().getBytes());
+				System.out.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
 				handshakeHandler.setMessageToSend(handshakeMessage);
 			} else {
 				System.out.println("Status : " + this.state + ", writing remaining part of handshake message to peer.");
@@ -336,10 +327,8 @@ public class PeerConnection {
 		if (this.state == State.OUT_CONNECTED) {
 			//TODO: Use a while to ensure the message is totally written to peer.
 			if (!handshakeHandler.isSendingInProgress()) {
-				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()),
-						self.getPeerId().getBytes());
-				System.out
-						.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
+				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()), self.getPeerId().getBytes());
+				System.out.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
 				handshakeHandler.setMessageToSend(handshakeMessage);
 			} else {
 				System.out.println("Status : " + this.state + ", writing remaining part of handshake message to peer.");
@@ -391,8 +380,7 @@ public class PeerConnection {
 				PeerMessage message = this.messagesToSend.poll();
 				if (message == null) {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
-					System.out
-							.println("Status : " + this.state + ", no message in the queue, unregistered OP_WRITE for this channel.");
+					System.out.println("Status : " + this.state + ", no message in the queue, unregistered OP_WRITE for this channel.");
 					break;
 				}
 				System.out.println("Got a message from queue.");
@@ -435,13 +423,18 @@ public class PeerConnection {
 	}
 
 	public static boolean isInterested(BitSet a, BitSet b) {
+		System.out
+				.println("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
+		int n = Math.max(a.size(), b.size());
 		// TODO: validate parameters.
-		for (int i = 0; i < a.size(); i++) {
+		boolean interested = false;
+		for (int i = 0; i < n; i++) {
 			if (!a.get(i) && b.get(i)) {
-				return true;
+				interested = true;
 			}
 		}
-		return false;
+		System.out.println("a is interested in b? " + interested);
+		return interested;
 	}
 
 	public void checkAliveAndKeepAlive() {
@@ -529,12 +522,12 @@ public class PeerConnection {
 		return messageHandler;
 	}
 
-	public int getIndexDownloading() {
-		return indexDownloading;
+	public int getIndexRequesting() {
+		return indexRequesting;
 	}
 
-	public void setIndexDownloading(int indexDownloading) {
-		this.indexDownloading = indexDownloading;
+	public void setIndexRequesting(int indexRequesting) {
+		this.indexRequesting = indexRequesting;
 	}
 
 	public int getRequestsSent() {

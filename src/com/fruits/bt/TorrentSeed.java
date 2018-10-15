@@ -114,9 +114,8 @@ public class TorrentSeed implements Serializable {
 
 	@Override
 	public String toString() {
-		return "TorrentSeed [announce = " + announce + ", length = " + length + ", pieceLength = " + pieceLength
-				+ ", sliceLength = " + sliceLength + ", name = " + name + ", pieceHashs = " + pieceHashs + ", md5sum = "
-				+ md5sum + ", infoHash = " + infoHash + "].\n";
+		return "TorrentSeed [announce = " + announce + ", length = " + length + ", pieceLength = " + pieceLength + ", sliceLength = " + sliceLength + ", name = "
+				+ name + ", pieceHashs = " + pieceHashs + ", md5sum = " + md5sum + ", infoHash = " + infoHash + "].\n";
 	}
 
 	public static TorrentSeed parseSeedFile(String seedFilePath) {
@@ -135,16 +134,16 @@ public class TorrentSeed implements Serializable {
 		BEValue commentValue = values.get(TorrentSeed.METAINFO_COMMENT);
 
 		String announce = null;
-		if (null != annouceValue)
+		if (annouceValue != null)
 			announce = annouceValue.getString();
 
 		long creationDate = -1;
 		//TODO: NULL?
-		if (null != creationDateValue)
+		if (creationDateValue != null)
 			creationDate = creationDateValue.getLong();
 
 		String comment = null; //
-		if (null != commentValue)
+		if (commentValue != null)
 			comment = commentValue.getString();
 
 		// "info"
@@ -174,8 +173,7 @@ public class TorrentSeed implements Serializable {
 		torrentSeed.setPieceHashs(pieceHashs);
 		torrentSeed.setName(name);
 
-		torrentSeed.setInfoHash(
-				Utils.bytes2HexString(Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array())));
+		torrentSeed.setInfoHash(Utils.bytes2HexString(Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array())));
 
 		return torrentSeed;
 	}

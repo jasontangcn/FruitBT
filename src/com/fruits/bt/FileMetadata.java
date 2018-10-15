@@ -61,7 +61,7 @@ public class FileMetadata implements Serializable {
 			pieces.add(piece);
 		}
 
-		if (0 != lastPieceLength) {
+		if (lastPieceLength != 0) {
 			int lastPieceSlicesSize = lastPieceLength / sliceLength;
 			int lastSliceLength = lastPieceLength % sliceLength;
 
@@ -70,7 +70,7 @@ public class FileMetadata implements Serializable {
 				Slice slice = new Slice(piecesSize, i * sliceLength, sliceLength);
 				slices.add(slice);
 			}
-			if (0 != lastSliceLength) {
+			if (lastSliceLength != 0) {
 				Slice slice = new Slice(piecesSize, lastPieceSlicesSize * sliceLength, lastSliceLength);
 				slices.add(slice);
 			}
@@ -199,7 +199,6 @@ public class FileMetadata implements Serializable {
 
 	@Override
 	public String toString() {
-		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n pieces = \n" + pieces
-				+ ", piecesCompleted = " + piecesCompleted + "].\n";
+		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n pieces = \n" + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
 	}
 }

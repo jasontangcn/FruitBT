@@ -84,8 +84,7 @@ public class Utils {
 	}
 
 	public static void main(String[] args) {
-		Map<String, BEValue> values = BDecoder.bdecode(Utils.readFile("doc\\ubuntu-18.04.1-desktop-amd64.iso.torrent"))
-				.getMap();
+		Map<String, BEValue> values = BDecoder.bdecode(Utils.readFile("doc\\ubuntu-18.04.1-desktop-amd64.iso.torrent")).getMap();
 		String announce = values.get("announce").getString();
 		BEValue announceList = values.get("announce-list");
 		long creationDate = values.get("creation date").getLong();

@@ -43,7 +43,7 @@ public abstract class PeerMessage {
 	public PeerMessage(byte id, ByteBuffer messageBytes) {
 		this.id = id;
 		this.messageBytes = messageBytes;
-		if (null != messageBytes) {
+		if (messageBytes != null) {
 			messageBytes.rewind(); // Is it required?
 		}
 	}
