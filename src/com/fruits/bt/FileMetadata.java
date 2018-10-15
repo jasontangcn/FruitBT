@@ -96,7 +96,24 @@ public class FileMetadata implements Serializable {
 			this.tempFile = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
 		}
 	}
-	
+
+	private void closeTempFile() {
+		System.out.println("FileMetadata-> Closing temp file.");
+		if ((tempFile != null) && (tempFile.isOpen())) {
+			try {
+				tempFile.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	// TODO: Who and when to call it?
+	// Added a hook for VM?
+	public void finalize() {
+		this.closeTempFile();
+	}
+
 	// @ return Slices of current piece are completed?
 	// TODO: VERY IMPORTANT!
 	// Previou verion we got IOException.
@@ -107,8 +124,8 @@ public class FileMetadata implements Serializable {
 		// int or long?
 		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
 		try {
-		  this.tempFile.write(data, startPos);
-		}catch(IOException e) {
+			this.tempFile.write(data, startPos);
+		} catch (IOException e) {
 			e.printStackTrace();
 			// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 			return false;
@@ -121,7 +138,7 @@ public class FileMetadata implements Serializable {
 		if (isPieceCompleted) {
 			piecesCompleted++;
 		}
-		
+
 		/*
 		 * This action should be performed when the file is completely downloaded.
 			if(isAllPiecesCompleted()) {
@@ -186,12 +203,12 @@ public class FileMetadata implements Serializable {
 	// The file should be always open for random access.
 	public ByteBuffer readSlice(Slice slice) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is reading slice.");
-		
+
 		openTempFile();
-		
+
 		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
 		//byte[] buffer = new byte[slice.getLength()];
-		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());		
+		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());
 		try {
 			// TODO: Test code
 			//RandomAccessFile tempFile = new RandomAccessFile("D:\\TorrentDownload\\Wireshark-win32-1.10.0.exe.X", "rw");
@@ -199,7 +216,7 @@ public class FileMetadata implements Serializable {
 			//tempFile.read(buffer);
 			//tempFile.close();
 			this.tempFile.read(buffer, startPos);
-		}catch(IOException e){
+		} catch (IOException e) {
 			e.printStackTrace();
 			// If read fails, return null.
 			return null;
@@ -213,7 +230,6 @@ public class FileMetadata implements Serializable {
 
 	@Override
 	public String toString() {
-		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n" 
-	          + "pieces = " + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
+		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n" + "pieces = " + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
 	}
 }

@@ -3,6 +3,7 @@ package com.fruits.bt;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
@@ -31,7 +32,7 @@ public class DownloadManager {
 	public static final int REQUEST_MESSAGE_BATCH_SIZE = 3;
 	private Map<String, List<Integer>> indexesRequesting = new HashMap<String, List<Integer>>();
 
-	public DownloadManager(PeerConnectionManager connectionManager) {
+	public DownloadManager(PeerConnectionManager connectionManager) throws IOException {
 		this.connectionManager = connectionManager;
 		loadDownloadTasks();
 
@@ -48,7 +49,7 @@ public class DownloadManager {
 		this.syncDownloadTasksToDisk();
 	}
 
-	private void loadDownloadTasks() {
+	private void loadDownloadTasks() throws IOException {
 		// FileOutputStream: If the specified file does not exits, create a new one.
 		// FileInputStream: If the specified file does not exits, throws exception.
 		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
@@ -56,8 +57,17 @@ public class DownloadManager {
 		if (tasksFile.length() > 0) {
 			// Load metadata for the files downloading/downloaded yet.
 			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(tasksFile));
-			Object obj = ois.readObject();
-			ois.close();
+			Object obj = null;
+			try {
+				obj = ois.readObject();
+			} catch (ClassNotFoundException e) {
+				throw new IOException(e);
+			}
+			try {
+				ois.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
 			System.out.println("Loaded download tasks from disk : " + this.downloadTasks + ".");
@@ -65,9 +75,18 @@ public class DownloadManager {
 			this.downloadTasks = new HashMap<String, DownloadTask>();
 			ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(tasksFile));
 			oos.writeObject(this.downloadTasks);
-			oos.close();
-
+			try {
+				oos.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			System.out.println("Created a new downloadTasks.");
+		}
+	}
+
+	public void finalize() {
+		for (DownloadTask task : this.downloadTasks.values()) {
+			task.getFileMetadata().finalize();
 		}
 	}
 
@@ -106,7 +125,7 @@ public class DownloadManager {
 	public void pauseDownloadFile(String infoHash) {
 	}
 
-	public void addDownloadTask(String seedFilePath) {
+	public void addDownloadTask(String seedFilePath) throws IOException { // IOException may be caused by : failed to parse seed file or failed to create FileMetadata.
 		// 1. create a FileMetadata(including the information from torrent seed and downloading progress), then save it to disk.
 		// 2. Peers from tracker is dynamic, so we do not need to persist it.
 		// 3. 
@@ -128,7 +147,7 @@ public class DownloadManager {
 	}
 
 	// Any file download task is updated, this method should be called to sync the changing to disk.
-	private void syncDownloadTasksToDisk() {
+	private void syncDownloadTasksToDisk() throws IOException { // Fatal error, if sych failed, the metadata is not complete, system should shutdown.
 		// TODO: Lock the file? Optimize the logic?
 		// FileOutputStream : if the file does not exist, create a new one.
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_TEMP_FILE));
@@ -144,14 +163,14 @@ public class DownloadManager {
 		return null;
 	}
 
-	public ByteBuffer readSlice(String infoHash, Slice slice) {
+	public ByteBuffer readSlice(String infoHash, Slice slice) throws IOException {
 		DownloadTask task = this.downloadTasks.get(infoHash);
-		if(task != null)
-		  return task.getFileMetadata().readSlice(slice);
+		if (task != null)
+			return task.getFileMetadata().readSlice(slice);
 		return null;
 	}
 
-	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
+	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) throws IOException {
 		boolean isPieceCompleted = this.downloadTasks.get(infoHash).getFileMetadata().writeSlice(index, begin, length, data);
 
 		syncDownloadTasksToDisk();

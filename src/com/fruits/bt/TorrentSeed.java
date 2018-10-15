@@ -178,7 +178,7 @@ public class TorrentSeed implements Serializable {
 		try {
 			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());
 			torrentSeed.setInfoHash(Utils.bytes2HexString(infoHash));
-		}catch(Exception e) {
+		} catch (Exception e) {
 			throw new IOException(e);
 		}
 

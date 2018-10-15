@@ -1,6 +1,7 @@
 package com.fruits.bt;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Properties;
 
@@ -69,6 +70,12 @@ public class Client {
 
 		connectionManager.start();
 
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				// This is used to close the channel for the temp file in FileMetadata.
+				downloadManager.finalize();
+			}
+		});
 		//downloadManager.addDownloadTask("doc\\\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.addDownloadTask("D:\\\\TorrentDownload2\\\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadFile("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");

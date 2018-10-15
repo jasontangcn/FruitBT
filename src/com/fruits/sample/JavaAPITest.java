@@ -7,7 +7,7 @@ import java.nio.file.Path;
 public class JavaAPITest {
 
 	public static void main(String[] args) throws Exception {
-    /*
+		/*
 		BitSet bitset = new BitSet(85);
 		System.out.println(bitset.toByteArray());
 		*/
@@ -96,14 +96,13 @@ public class JavaAPITest {
 			System.out.println(rate);
 		}
 		*/
-		
+
 		/*
 		FileOutputStream fis = new FileOutputStream(new File("D:\\aaaa.txt"));
 		fis.write(1);
 		fis.close();
 		*/
 
-		
 		//Files.readAllBytes(new File("d:\\abcdef.txt").getPath());
 		/*
 		System.out.println(new File("d:\\abcdef.txt").getPath());

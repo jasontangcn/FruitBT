@@ -60,7 +60,7 @@ public class Utils {
 			File file = new File(filePath);
 			if (!file.exists())
 				return null;
-			
+
 			fis = new FileInputStream(file);
 			channel = fis.getChannel();
 
@@ -74,31 +74,31 @@ public class Utils {
 				buffer.clear();
 			}
 		} finally {
-			if((channel != null)&&(channel.isOpen())) {
-			  try {
-			    channel.close();
-			  }catch(IOException e) {
-			  	e.printStackTrace();
-			  }
+			if ((channel != null) && (channel.isOpen())) {
+				try {
+					channel.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-			
-			if(fis != null) {
-			  try {
-			  	fis.close();
-			  }catch(IOException e) {
-			  	e.printStackTrace();
-			  }
+
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-			
-			if(os != null) {
-			  try {
-			    os.close();
-			  }catch(IOException e) {
-			  	e.printStackTrace();
-			  }
+
+			if (os != null) {
+				try {
+					os.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
-		
+
 		return ByteBuffer.wrap(os.toByteArray());
 	}
 
