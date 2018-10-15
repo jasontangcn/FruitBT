@@ -11,38 +11,39 @@ import java.util.Iterator;
 public class NIOServerTest {
 	public static void main(String[] args) throws Exception {
 		Selector selector = Selector.open();
-		ServerSocketChannel  serverChannel = ServerSocketChannel.open();
+		ServerSocketChannel serverChannel = ServerSocketChannel.open();
 		serverChannel.configureBlocking(false);
 		serverChannel.socket().setReuseAddress(true);
-		serverChannel.socket().bind(new InetSocketAddress("127.0.0.1",8888));
+		serverChannel.socket().bind(new InetSocketAddress("127.0.0.1", 8888));
 		serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-		
-		for(;;) {
+
+		for (;;) {
 			selector.select();
 			Iterator selectedKeys = selector.selectedKeys().iterator();
-			while(selectedKeys.hasNext()) {
-				SelectionKey key = (SelectionKey)selectedKeys.next();
+			while (selectedKeys.hasNext()) {
+				SelectionKey key = (SelectionKey) selectedKeys.next();
 				selectedKeys.remove();
-				
-				if(!key.isValid()) continue;
-				
-				if(key.isAcceptable()) {
-					ServerSocketChannel serverSocket = (ServerSocketChannel)key.channel();
+
+				if (!key.isValid())
+					continue;
+
+				if (key.isAcceptable()) {
+					ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
 					SocketChannel socketChannel = serverSocket.accept();
 					socketChannel.configureBlocking(false);
 					System.out.println("Accepted : " + socketChannel.socket().getRemoteSocketAddress());
 					socketChannel.register(selector, SelectionKey.OP_READ);
 					//socketChannel.register(selector, SelectionKey.OP_WRITE);
 					//Thread.sleep(120 * 1000);
-				}else if(key.isReadable()) {
+				} else if (key.isReadable()) {
 					System.out.println("Start to read data.");
-					SocketChannel socketChannel = (SocketChannel)key.channel();
+					SocketChannel socketChannel = (SocketChannel) key.channel();
 					ByteBuffer buffer = ByteBuffer.allocate(1024);
-				    while(socketChannel.read(buffer) > 0) {
-				    	System.out.println(new String(buffer.array()));
-				    	buffer.clear();
+					while (socketChannel.read(buffer) > 0) {
+						System.out.println(new String(buffer.array()));
+						buffer.clear();
 					}
-				}else if(key.isWritable()) {
+				} else if (key.isWritable()) {
 					System.out.println("Ready to write data");
 					/*
 					SocketChannel socketChannel = (SocketChannel)key.channel();
@@ -57,7 +58,7 @@ public class NIOServerTest {
 					*/
 					//socketChannel.close();
 				}
-				
+
 			}
 		}
 	}

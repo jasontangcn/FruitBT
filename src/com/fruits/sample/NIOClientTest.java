@@ -39,14 +39,14 @@ public class NIOClientTest {
 					SocketChannel channel = (SocketChannel) key.channel();
 					ByteBuffer buffer = ByteBuffer.allocate(18);
 					int n = channel.read(buffer);
-					//if(-1 == n) channel.close();
+					//if(n == -1) channel.close();
 				} else if (key.isWritable()) {
 					SocketChannel channel = (SocketChannel) key.channel();
 					ByteBuffer buffer = ByteBuffer.allocate(1024);
 					buffer.put("Hello Stranger!".getBytes());
 					buffer.flip();
 					System.out.println("Writing data to server.");
-					while(buffer.hasRemaining()) {
+					while (buffer.hasRemaining()) {
 						channel.write(buffer);
 					}
 					System.out.println("Completed writing data.");
