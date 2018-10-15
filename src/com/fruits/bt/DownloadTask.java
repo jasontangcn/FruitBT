@@ -17,20 +17,18 @@ public class DownloadTask implements Serializable {
 
 	private DownloadState downloadState;
 	private FileMetadata fileMetadata;
-	
+
 	public DownloadTask() {
-		
+
 	}
 
 	public DownloadState getDownloadState() {
 		return downloadState;
 	}
 
-
 	public void setDownloadState(DownloadState downloadState) {
 		this.downloadState = downloadState;
 	}
-
 
 	public FileMetadata getFileMetadata() {
 		return fileMetadata;
@@ -40,11 +38,9 @@ public class DownloadTask implements Serializable {
 		this.fileMetadata = fileMetadata;
 	}
 
-
 	@Override
 	public String toString() {
 		return "DownloadTask [downloadState=" + downloadState + ", fileMetadata=" + fileMetadata + "].";
 	}
-	
-	
+
 }
