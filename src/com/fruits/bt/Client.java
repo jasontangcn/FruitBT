@@ -39,12 +39,12 @@ public class Client {
 				+ "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		Client client = new Client();
 		client.start();
 	}
 
-	public void start() {
+	public void start() throws IOException {
 		// 1. Load metadata for the files downloading/downloaded.
 		// 2. Start listener for other peers.
 		// 3. Start to download the files.
@@ -76,8 +76,8 @@ public class Client {
 				downloadManager.finalize();
 			}
 		});
-		//downloadManager.addDownloadTask("doc\\\\Wireshark-win32-1.10.0.exe.torrent");
-		//downloadManager.addDownloadTask("D:\\\\TorrentDownload2\\\\Wireshark-win32-1.10.0.exe.torrent");
+		//downloadManager.addDownloadTask("doc\\Wireshark-win32-1.10.0.exe.torrent");
+		//downloadManager.addDownloadTask("D:\\TorrentDownload2\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadFile("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
 	}
 }

@@ -42,9 +42,9 @@ public class PeerConnectionManager implements Runnable {
 	private ScheduledExecutorService choker = Executors.newSingleThreadScheduledExecutor();
 	private ScheduledExecutorService aliveManager = Executors.newSingleThreadScheduledExecutor();
 
-	public PeerConnectionManager(InetSocketAddress listenEndpoint) {
+	public PeerConnectionManager(InetSocketAddress listenEndpoint) throws IOException {
 		this.listenEndpoint = listenEndpoint;
-		this.selector = Selector.open();
+		this.selector = Selector.open(); // This may throw IOException.
 
 		choker.scheduleAtFixedRate(new Runnable() {
 			public void run() {
