@@ -1,2 +1,2 @@
 # FruitBT
-a BT implemention with Java
+BT implemention with Java
