@@ -401,7 +401,7 @@ public class PeerConnectionManager implements Runnable {
 		Iterator<PeerConnection> iterator = connections.iterator();
 		while(iterator.hasNext()) {
 			PeerConnection conn = iterator.next();
-			if(conn.isClosed())
+			if(conn.isClosing())
 				iterator.remove();
 		}
 	}

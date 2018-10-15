@@ -14,7 +14,7 @@ import com.fruits.bt.PeerMessage.PieceMessage;
 public class PeerMessageHandler {
 	public static final int PEER_MESSAGE_LENGTH_PREFIX = 4;
 	private int lengthPrefix = -1;
-	private final SocketChannel socketChannel;
+	private final PeerConnection connection;
 	// TODO: Check the definition in TorrentSeed.
 	private ByteBuffer readBuffer = ByteBuffer.allocate(4 + 9 + 16 * 1024 * 4); // the longest message is piece
 	private PeerMessage messageToSend;
@@ -43,8 +43,8 @@ public class PeerMessageHandler {
 
 	private SendState state = SendState.IDLE;
 
-	public PeerMessageHandler(SocketChannel socketChannel) {
-		this.socketChannel = socketChannel;
+	public PeerMessageHandler(PeerConnection connection) {
+		this.connection = connection;
 	}
 
 	public void calculateReadWriteRate() {
@@ -76,40 +76,49 @@ public class PeerMessageHandler {
 	//          piece : <len=0009+X><id=7><index><begin><block> // len = 16K + 9 = 00 00 40 09 = 0100 0000 0000 1001
 	//         cancel : <len=0013><id=8><index><begin><length>
 	//           port : <len=0003><id=9><listen-port>
-	public PeerMessage readMessage() throws IOException {
-		if (lengthPrefix == -1) {
-			this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+	public PeerMessage readMessage() {
+		SocketChannel socketChannel = this.connection.getChannel();
+		try {
+			if (lengthPrefix == -1) {
+				this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+				// NotYetConnectedException if the channel is not connected.
+				socketChannel.read(readBuffer);
+				if (readBuffer.hasRemaining()) {
+					return null;
+				}
+				this.lengthPrefix = readBuffer.getInt(0);
+				System.out.println("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
+				readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+			}
 			// NotYetConnectedException if the channel is not connected.
-			socketChannel.read(readBuffer);
+			int count = socketChannel.read(readBuffer);
+			if (count == -1)
+				return null; // TODO: should close the connection.
 			if (readBuffer.hasRemaining()) {
 				return null;
+			} else {
+				readBuffer.rewind();
+				ByteBuffer copy = ByteBuffer.wrap(Arrays.copyOf(readBuffer.array(), readBuffer.limit()));
+				this.lengthPrefix = -1;
+				PeerMessage peerMessage = PeerMessage.parseMessage(copy);
+
+				if (peerMessage instanceof PieceMessage) {
+					this.bytesRead += ((PieceMessage) peerMessage).getBlock().limit();
+				}
+
+				return peerMessage;
 			}
-			this.lengthPrefix = readBuffer.getInt(0);
-			System.out.println("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
-			readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
-		}
-		// NotYetConnectedException if the channel is not connected.
-		int count = socketChannel.read(readBuffer);
-		if (count == -1)
-			return null; // TODO: should close the connection.
-		if (readBuffer.hasRemaining()) {
+		} catch (IOException e) {
+			e.printStackTrace();
+			this.connection.close();
 			return null;
-		} else {
-			readBuffer.rewind();
-			ByteBuffer copy = ByteBuffer.wrap(Arrays.copyOf(readBuffer.array(), readBuffer.limit()));
-			this.lengthPrefix = -1;
-			PeerMessage peerMessage = PeerMessage.parseMessage(copy);
-
-			if (peerMessage instanceof PieceMessage) {
-				this.bytesRead += ((PieceMessage) peerMessage).getBlock().limit();
-			}
-
-			return peerMessage;
 		}
 	}
 
 	// @return Message has been totally written to peer or not?
-	public boolean writeMessage() throws IOException {
+	public boolean writeMessage() {
+		SocketChannel socketChannel = this.connection.getChannel();
+
 		if (this.state == SendState.READY) {
 			this.state = SendState.SENDING;
 		} else if (this.state == SendState.SENDING) {
@@ -119,7 +128,14 @@ public class PeerMessageHandler {
 
 		// TODO: if 0 bytes written, it leads to recrete the message.
 		do {
-			int n = socketChannel.write(this.messageBytesToWrite); // NotYetConnectedException
+			int n = -1;
+			try {
+				n = socketChannel.write(this.messageBytesToWrite); // NotYetConnectedException
+			} catch (IOException e) {
+				e.printStackTrace();
+				this.connection.close();
+				return false;
+			}
 			if (n == 0)
 				break;
 		} while (messageBytesToWrite.hasRemaining());
