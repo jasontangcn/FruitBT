@@ -41,7 +41,7 @@ public class DownloadManager {
 		FileMetadata fileMetadata = this.downloadTasks.get("b3c8f8e50d3f3f701157f2c2517eee78588b48f2").getFileMetadata();
 		List<Slice> slicesToDwonlaod = fileMetadata.getIncompletedSlices();
 		for(Slice slice : slicesToDwonlaod) {
-			ByteBuffer content = fileMetadata.readSliceData(slice);
+			ByteBuffer content = fileMetadata.readSlice(slice);
 			fileMetadata.writeSlice(slice.getIndex(), slice.getBegin(), slice.getLength(), content);
 		}
 		*/
@@ -49,10 +49,12 @@ public class DownloadManager {
 	}
 
 	private void loadDownloadTasks() {
+		// FileOutputStream: If the specified file does not exits, create a new one.
+		// FileInputStream: If the specified file does not exits, throws exception.
 		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
 		// TODO: File.length() to check whether the file is empty or not, is it enough?
 		if (tasksFile.length() > 0) {
-			// Load metadata for the files downloading or downloaded yet.
+			// Load metadata for the files downloading/downloaded yet.
 			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(tasksFile));
 			Object obj = ois.readObject();
 			ois.close();
@@ -73,14 +75,14 @@ public class DownloadManager {
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
 		downloadTask.setState(DownloadTask.DownloadState.STARTED);
 		FileMetadata fileMetada = downloadTask.getFileMetadata();
-		TorrentSeed torrentSeed = fileMetada.getSeed();
+		TorrentSeed seed = fileMetada.getSeed();
 		Peer self = new Peer();
 		// TODO: Set the correct peerId, infoHash and bitfield.
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHash(infoHash);
 		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetada.getBitfield() + ".");
 
-		List<Peer> peers = trackerManager.getPeers(torrentSeed);
+		List<Peer> peers = trackerManager.getPeers(seed);
 		System.out.println("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
 
 		for (Peer peer : peers) {
@@ -98,7 +100,7 @@ public class DownloadManager {
 	public void startDownloadAllFiles() {
 	}
 
-	public void stopDownloadingFile(String infoHash) {
+	public void stopDownloadFile(String infoHash) {
 	}
 
 	public void pauseDownloadFile(String infoHash) {
@@ -108,14 +110,14 @@ public class DownloadManager {
 		// 1. create a FileMetadata(including the information from torrent seed and downloading progress), then save it to disk.
 		// 2. Peers from tracker is dynamic, so we do not need to persist it.
 		// 3. 
-		TorrentSeed torrentSeed = TorrentSeed.parseSeedFile(seedFilePath);
+		TorrentSeed seed = TorrentSeed.parseSeedFile(seedFilePath);
 		DownloadTask downloadTask = new DownloadTask();
 
-		FileMetadata fileMetadata = new FileMetadata(torrentSeed);
+		FileMetadata fileMetadata = new FileMetadata(seed);
 		downloadTask.setState(DownloadTask.DownloadState.PENDING);
 		downloadTask.setFileMetadata(fileMetadata);
 
-		this.downloadTasks.put(torrentSeed.getInfoHash(), downloadTask);
+		this.downloadTasks.put(seed.getInfoHash(), downloadTask);
 		System.out.println("New download task was added, downloadTasks length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
@@ -139,12 +141,14 @@ public class DownloadManager {
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
 		if (downloadTask != null)
 			return downloadTask.getFileMetadata().getBitfield();
-		else
-			return null;
+		return null;
 	}
 
 	public ByteBuffer readSlice(String infoHash, Slice slice) {
-		return this.downloadTasks.get(infoHash).getFileMetadata().readSliceData(slice);
+		DownloadTask task = this.downloadTasks.get(infoHash);
+		if(task != null)
+		  return task.getFileMetadata().readSlice(slice);
+		return null;
 	}
 
 	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {

@@ -1,13 +1,16 @@
 package com.fruits.sample;
 
-import java.util.BitSet;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class JavaAPITest {
 
 	public static void main(String[] args) throws Exception {
-
+    /*
 		BitSet bitset = new BitSet(85);
 		System.out.println(bitset.toByteArray());
+		*/
 		/*
 		System.out.println(bitset.length());
 		System.out.println(bitset.size());
@@ -92,6 +95,23 @@ public class JavaAPITest {
 		for(Rate rate : rates) {
 			System.out.println(rate);
 		}
+		*/
+		
+		/*
+		FileOutputStream fis = new FileOutputStream(new File("D:\\aaaa.txt"));
+		fis.write(1);
+		fis.close();
+		*/
+
+		
+		//Files.readAllBytes(new File("d:\\abcdef.txt").getPath());
+		/*
+		System.out.println(new File("d:\\abcdef.txt").getPath());
+		System.out.println(new File("d:\\abcdef.txt").toPath());
+		System.out.println(new File("d:\\abcdef.txt").getAbsolutePath());
+		Path path = new File("d:\\abcdef.txt").toPath();
+		Path path2 = new File("/home/abc").toPath();
+		int i = 0;
 		*/
 	}
 

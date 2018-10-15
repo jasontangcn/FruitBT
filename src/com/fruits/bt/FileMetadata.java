@@ -1,14 +1,21 @@
 package com.fruits.bt;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+
+// TODO: Some days ago, if I open/write RandomAccessFile frequently, always got a exception.
+//       Now if I always open a file for write/read, the issue disappear.
+// Need to reproduce it.
 
 public class FileMetadata implements Serializable {
 	// TODO: VERY IMPORTANT!  
@@ -21,12 +28,13 @@ public class FileMetadata implements Serializable {
 	private List<Piece> pieces;
 	private int piecesCompleted;
 
-	private transient RandomAccessFile tempFile;
-	private transient FileChannel channel;
+	private transient FileChannel tempFile;
 
-	public FileMetadata(TorrentSeed seed) {
+	// TODO: Need a Externalizable?
+	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
+	public FileMetadata(TorrentSeed seed) throws IOException {
 		this.seed = seed;
-		this.filePath = Client.DOWNLOAD_TEMP_DIR + "\\\\" + seed.getInfoHash() + ".tmp";
+		this.filePath = Client.DOWNLOAD_TEMP_DIR + File.separator + seed.getInfoHash() + ".tmp";
 
 		File file = new File(this.filePath);
 		if (!file.exists()) {
@@ -81,55 +89,49 @@ public class FileMetadata implements Serializable {
 		}
 	}
 
+	// TODO:
+	// Need Multi thread consideration.
+	private void openTempFile() throws IOException {
+		if (this.tempFile == null) {
+			this.tempFile = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
+		}
+	}
+	
 	// @ return Slices of current piece are completed?
 	// TODO: VERY IMPORTANT!
 	// Previou verion we got IOException.
-	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) {
-		System.out.println("Thread : " + Thread.currentThread() + " is writing slices.");
+	// Only if opening temp file fails, throw the IOException.
+	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
+		System.out.println("Thread : " + Thread.currentThread() + " is writing slice.");
+		openTempFile();
 		// int or long?
-		int startPosition = (this.seed.getPieceLength() * index) + begin; // 0 based -> 
-		if (tempFile == null) {
-			tempFile = new RandomAccessFile(this.filePath, "rws");
-			channel = tempFile.getChannel();
+		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
+		try {
+		  this.tempFile.write(data, startPos);
+		}catch(IOException e) {
+			e.printStackTrace();
+			// If write fails, ignore it, pls. never continue to update the metadata of pieces.
+			return false;
 		}
-
-		FileLock lock = channel.lock();
-		channel.position(startPosition);
-		channel.write(data);
 		//tempFile.seek(startPosition);
 		//TODO: length or data.array().length?
 		//tempFile.write(data.array(), 0, length);
-		lock.release();
-
 		this.pieces.get(index).setSliceCompleted(begin);
-
 		boolean isPieceCompleted = pieces.get(index).isAllSlicesCompleted();
 		if (isPieceCompleted) {
 			piecesCompleted++;
 		}
-
-		if (isAllPiecesCompleted()) {
-			//try {
-			this.channel.close();
-			//}catch(Exception e) {
-			//	e.printStackTrace();
-			//}
-			//try {
-			this.tempFile.close();
-			//}catch(Exception e) {
-			//	e.printStackTrace();
-			//}
-		}
-
+		
 		/*
-				if(isAllPiecesCompleted()) {
-					System.out.println("All of the pieces are completed.");
-					File file = new File(filePath);
-					String newFilePath = Client.DOWNLOAD_TEMP_DIR + "\\\\" + seed.getName();
-					file.renameTo(new File(newFilePath));
-					
-					this.filePath = newFilePath;
-				}
+		 * This action should be performed when the file is completely downloaded.
+			if(isAllPiecesCompleted()) {
+				System.out.println("All of the pieces are completed.");
+				File file = new File(filePath);
+				String newFilePath = Client.DOWNLOAD_TEMP_DIR + "\\\\" + seed.getName();
+				file.renameTo(new File(newFilePath));
+				
+				this.filePath = newFilePath;
+			}
 		*/
 		return isPieceCompleted;
 	}
@@ -152,8 +154,6 @@ public class FileMetadata implements Serializable {
 		for (int i = 0; i < pieces.size(); i++) {
 			if (pieces.get(i).isAllSlicesCompleted())
 				bitfield.set(i);
-			else
-				bitfield.set(i, false);
 		}
 		return bitfield;
 	}
@@ -172,25 +172,39 @@ public class FileMetadata implements Serializable {
 	}
 
 	public List<Slice> getIncompletedSlices() {
-		List<Slice> incompletedSlices = new ArrayList<Slice>();
+		List<Slice> incompleteds = new ArrayList<Slice>();
 		for (Piece piece : pieces) {
 			for (Slice slice : piece.getSlices()) {
 				if (!slice.isCompleted())
-					incompletedSlices.add(slice);
+					incompleteds.add(slice);
 			}
 		}
-		return incompletedSlices;
+		return incompleteds;
 	}
 
-	// TODO: Test code.
-	public ByteBuffer readSliceData(Slice slice) {
+	// In production, we should not open then close a file for writing/reading a slice.
+	// The file should be always open for random access.
+	public ByteBuffer readSlice(Slice slice) throws IOException {
+		System.out.println("Thread : " + Thread.currentThread() + " is reading slice.");
+		
+		openTempFile();
+		
 		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
-		byte[] buffer = new byte[slice.getLength()];
-		RandomAccessFile tempFile = new RandomAccessFile("D:\\\\TorrentDownload\\\\Wireshark-win32-1.10.0.exe.X", "rw");
-		tempFile.seek(startPos);
-		tempFile.read(buffer);
-		tempFile.close();
-		return ByteBuffer.wrap(buffer);
+		//byte[] buffer = new byte[slice.getLength()];
+		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());		
+		try {
+			// TODO: Test code
+			//RandomAccessFile tempFile = new RandomAccessFile("D:\\TorrentDownload\\Wireshark-win32-1.10.0.exe.X", "rw");
+			//tempFile.seek(startPos);
+			//tempFile.read(buffer);
+			//tempFile.close();
+			this.tempFile.read(buffer, startPos);
+		}catch(IOException e){
+			e.printStackTrace();
+			// If read fails, return null.
+			return null;
+		}
+		return buffer;
 	}
 
 	public TorrentSeed getSeed() {
@@ -199,6 +213,7 @@ public class FileMetadata implements Serializable {
 
 	@Override
 	public String toString() {
-		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n pieces = \n" + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
+		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n" 
+	          + "pieces = " + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
 	}
 }

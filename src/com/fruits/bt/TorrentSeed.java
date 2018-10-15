@@ -1,7 +1,9 @@
 package com.fruits.bt;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -118,7 +120,7 @@ public class TorrentSeed implements Serializable {
 				+ name + ", pieceHashs = " + pieceHashs + ", md5sum = " + md5sum + ", infoHash = " + infoHash + "].\n";
 	}
 
-	public static TorrentSeed parseSeedFile(String seedFilePath) {
+	public static TorrentSeed parseSeedFile(String seedFilePath) throws IOException {
 		ByteBuffer seedFile = Utils.readFile(seedFilePath);
 		if (seedFile == null)
 			return null;
@@ -173,7 +175,12 @@ public class TorrentSeed implements Serializable {
 		torrentSeed.setPieceHashs(pieceHashs);
 		torrentSeed.setName(name);
 
-		torrentSeed.setInfoHash(Utils.bytes2HexString(Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array())));
+		try {
+			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());
+			torrentSeed.setInfoHash(Utils.bytes2HexString(infoHash));
+		}catch(Exception e) {
+			throw new IOException(e);
+		}
 
 		return torrentSeed;
 	}
