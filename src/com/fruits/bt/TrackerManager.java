@@ -10,7 +10,7 @@ public class TrackerManager {
 	public List<Peer> getPeers(TorrentSeed seed) {
 		List<Peer> peers = new ArrayList<Peer>();
 		Peer peer = new Peer();
-		peer.setAddress(new InetSocketAddress(Client.REMOTE_DOMAIN,Client.REMOTE_PORT));
+		peer.setAddress(new InetSocketAddress(Client.REMOTE_DOMAIN, Client.REMOTE_PORT));
 		peer.setPeerId(Client.REMOTE_PEER_ID);
 		peers.add(peer);
 		return peers;

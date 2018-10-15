@@ -1,6 +1,5 @@
 package com.fruits.bt;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
@@ -21,7 +20,7 @@ public class PeerMessageHandler {
 
 	private long bytesRead;
 	private long bytesWritten;
-	
+
 	// A separate thread will calculate the download rate and upload rate by every 10 seconds.
 	private long bytesReadPrePeriod;
 	private long timePreRead = System.currentTimeMillis();
@@ -39,28 +38,31 @@ public class PeerMessageHandler {
 			this.stateId = stateId;
 		}
 	}
-	
+
 	private SendState state = SendState.IDLE;
-	
+
 	public PeerMessageHandler(SocketChannel socketChannel) {
 		this.socketChannel = socketChannel;
 	}
-	
+
 	public void calculateReadWriteRate() {
 		// bytes read/ms
 		this.readRate = ((this.bytesRead - this.bytesReadPrePeriod) / (System.currentTimeMillis() - this.timePreRead));
 		// bytes write/ms
-		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / (System.currentTimeMillis() - this.timePreWrite));
-		
-		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePreRead + ",\n"
-				+ "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n" 
-				+ "readRate = " + readRate + " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
-		
+		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod)
+				/ (System.currentTimeMillis() - this.timePreWrite));
+
+		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead
+				+ ", timePreRead = " + timePreRead + ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = "
+				+ bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n" + "readRate = " + readRate
+				+ " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
+
 		this.bytesReadPrePeriod = this.bytesRead;
 		this.timePreRead = System.currentTimeMillis();
 		this.bytesWritePrePeriod = this.bytesWritten;
 		this.timePreWrite = System.currentTimeMillis();
 	}
+
 	// message type id
 	// <length prefix><message ID><payload>
 	// keep_alive : <len=0000>
@@ -74,9 +76,10 @@ public class PeerMessageHandler {
 	//          piece : <len=0009+X><id=7><index><begin><block> // len = 16K + 9 = 00 00 40 09 = 0100 0000 0000 1001
 	//         cancel : <len=0013><id=8><index><begin><length>
 	//           port : <len=0003><id=9><listen-port>
-	public PeerMessage readMessage() throws IOException {
-		if (-1 == lengthPrefix) {
+	public PeerMessage readMessage() {
+		if (lengthPrefix == -1) {
 			this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
+			// NotYetConnectedException if the channel is not connected.
 			socketChannel.read(readBuffer);
 			if (readBuffer.hasRemaining()) {
 				return null;
@@ -85,9 +88,9 @@ public class PeerMessageHandler {
 			System.out.println("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
 			readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 		}
-
+		// NotYetConnectedException if the channel is not connected.
 		int count = socketChannel.read(readBuffer);
-		if(-1 == count)
+		if (count == -1)
 			return null; // TODO: should close the connection.
 		if (readBuffer.hasRemaining()) {
 			return null;
@@ -95,54 +98,54 @@ public class PeerMessageHandler {
 			readBuffer.rewind();
 			ByteBuffer copy = ByteBuffer.wrap(Arrays.copyOf(readBuffer.array(), readBuffer.limit()));
 			this.lengthPrefix = -1;
-	        PeerMessage peerMessage = PeerMessage.parseMessage(copy);
-	        
-	        if(peerMessage instanceof PieceMessage) {
-				this.bytesRead += ((PieceMessage)peerMessage).getBlock().limit();
-	        }
-	        
-	        return peerMessage;
+			PeerMessage peerMessage = PeerMessage.parseMessage(copy);
+
+			if (peerMessage instanceof PieceMessage) {
+				this.bytesRead += ((PieceMessage) peerMessage).getBlock().limit();
+			}
+
+			return peerMessage;
 		}
 	}
-	
+
 	// @return Message has been totally written to peer or not?
-	public boolean writeMessage() throws IOException {
-		if(SendState.READY == this.state) {
+	public boolean writeMessage() {
+		if (this.state == SendState.READY) {
 			this.state = SendState.SENDING;
-		}else if(SendState.SENDING == this.state) {
-		}else {
+		} else if (this.state == SendState.SENDING) {
+		} else {
 			throw new RuntimeException("PeerMessageHandler is in illegal status.");
 		}
-		
+
 		// TODO: if 0 bytes written, it leads to recrete the message.
 		do {
-			int n = socketChannel.write(this.messageBytesToWrite);
-			if(0 == n)
+			int n = socketChannel.write(this.messageBytesToWrite); // NotYetConnectedException
+			if (n == 0)
 				break;
-		}while(messageBytesToWrite.hasRemaining());
-		
-		if(0 == messageBytesToWrite.remaining()) {
-			if(this.messageToSend instanceof PieceMessage) {
-				this.bytesWritten += ((PieceMessage)messageToSend).getBlock().limit();
+		} while (messageBytesToWrite.hasRemaining());
+
+		if (messageBytesToWrite.remaining() == 0) {
+			if (this.messageToSend instanceof PieceMessage) {
+				this.bytesWritten += ((PieceMessage) messageToSend).getBlock().limit();
 			}
 		}
-		
+
 		boolean hasRemaining = messageBytesToWrite.hasRemaining();
-		
-		if(!hasRemaining)
+
+		if (!hasRemaining)
 			this.state = SendState.IDLE;
-	
-		
+
 		return !hasRemaining;
 	}
-	
+
 	public void setMessageToSend(PeerMessage messageToSend) {
-		if(SendState.IDLE == this.state || SendState.READY == this.state) {
-		    this.messageToSend = messageToSend;
-		    this.messageBytesToWrite =  messageToSend.encode();
-		    this.state = SendState.READY;
-		}else {
-			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
+		if ((this.state == SendState.IDLE) || (this.state == SendState.READY)) {
+			this.messageToSend = messageToSend;
+			this.messageBytesToWrite = messageToSend.encode();
+			this.state = SendState.READY;
+		} else {
+			throw new RuntimeException(
+					"PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
 		}
 	}
 
@@ -151,7 +154,7 @@ public class PeerMessageHandler {
 	}
 
 	public boolean isSendingInProgress() {
-		return SendState.SENDING == this.state;
+		return this.state == SendState.SENDING;
 	}
 
 	public float getReadRate() {

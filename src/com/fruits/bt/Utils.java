@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.FileChannel;
@@ -18,7 +17,7 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 
 public class Utils {
-	public static byte[] getSHA1(byte[] data) throws Exception {
+	public static byte[] getSHA1(byte[] data) {
 
 		MessageDigest md = MessageDigest.getInstance("SHA1");
 		md.update(data);
@@ -52,7 +51,7 @@ public class Utils {
 	}
 
 	// TODO: Rewrite, looks this code is too complex.
-	public static ByteBuffer readFile(String filePath) throws FileNotFoundException, IOException {
+	public static ByteBuffer readFile(String filePath) {
 		File file = new File(filePath);
 		if (!file.exists())
 			return null;
@@ -78,14 +77,15 @@ public class Utils {
 		return ByteBuffer.wrap(content);
 	}
 
-	public static CharBuffer readTextFile(String filePath, String charset) throws Exception {
+	public static CharBuffer readTextFile(String filePath, String charset) {
 		ByteBuffer content = readFile(filePath);
 		CharsetDecoder decoder = Charset.forName(charset).newDecoder();
 		return decoder.decode(content);
 	}
 
-	public static void main(String[] args) throws Exception {
-		Map<String, BEValue> values = BDecoder.bdecode(Utils.readFile("doc\\ubuntu-18.04.1-desktop-amd64.iso.torrent")).getMap();
+	public static void main(String[] args) {
+		Map<String, BEValue> values = BDecoder.bdecode(Utils.readFile("doc\\ubuntu-18.04.1-desktop-amd64.iso.torrent"))
+				.getMap();
 		String announce = values.get("announce").getString();
 		BEValue announceList = values.get("announce-list");
 		long creationDate = values.get("creation date").getLong();
