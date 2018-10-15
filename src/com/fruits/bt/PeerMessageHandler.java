@@ -1,8 +1,10 @@
 package com.fruits.bt;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+
 import com.fruits.bt.PeerMessage.PieceMessage;
 
 /*
@@ -74,7 +76,7 @@ public class PeerMessageHandler {
 	//          piece : <len=0009+X><id=7><index><begin><block> // len = 16K + 9 = 00 00 40 09 = 0100 0000 0000 1001
 	//         cancel : <len=0013><id=8><index><begin><length>
 	//           port : <len=0003><id=9><listen-port>
-	public PeerMessage readMessage() {
+	public PeerMessage readMessage() throws IOException {
 		if (lengthPrefix == -1) {
 			this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 			// NotYetConnectedException if the channel is not connected.
@@ -107,7 +109,7 @@ public class PeerMessageHandler {
 	}
 
 	// @return Message has been totally written to peer or not?
-	public boolean writeMessage() {
+	public boolean writeMessage() throws IOException {
 		if (this.state == SendState.READY) {
 			this.state = SendState.SENDING;
 		} else if (this.state == SendState.SENDING) {

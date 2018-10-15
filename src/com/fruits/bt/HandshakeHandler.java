@@ -1,5 +1,6 @@
 package com.fruits.bt;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
@@ -13,13 +14,12 @@ public class HandshakeHandler {
 		this.socketChannel = socketChannel;
 	}
 
-	public HandshakeMessage readMessage() {
+	public HandshakeMessage readMessage() throws IOException {
 		if (socketChannel.read(readBuffer) == -1) {
 			// Channel is closed? 
 			// To close the channel? 
 			// To unregister the channel from the Selector with the cancel() method?
 			//
-			this.socketChannel.close();
 			return null;
 		} else {
 			if (readBuffer.hasRemaining())
@@ -30,8 +30,8 @@ public class HandshakeHandler {
 	}
 
 	// @return Message has been totally written to peer or not?
-	public boolean writeMessage() {
-		// TODO: if 0 bytes written, it leads to recrete the message.
+	public boolean writeMessage() throws IOException {
+		// TODO: if 0 bytes written, it leads to recreate the message.
 		do {
 			int n = socketChannel.write(messageBytesToSend);
 			if (n == 0)

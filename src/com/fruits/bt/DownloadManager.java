@@ -163,21 +163,34 @@ public class DownloadManager {
 		return null;
 	}
 
-	public ByteBuffer readSlice(String infoHash, Slice slice) throws IOException {
-		DownloadTask task = this.downloadTasks.get(infoHash);
-		if (task != null)
-			return task.getFileMetadata().readSlice(slice);
-		return null;
+	public ByteBuffer readSlice(String infoHash, Slice slice) {
+		try {
+			DownloadTask task = this.downloadTasks.get(infoHash);
+			if (task != null)
+				return task.getFileMetadata().readSlice(slice);
+			return null;
+		}catch(IOException e) {
+			// If exception caught, failed to open temp file, it's fatal error.
+			e.printStackTrace();
+			return null;
+		}
 	}
 
-	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) throws IOException {
-		boolean isPieceCompleted = this.downloadTasks.get(infoHash).getFileMetadata().writeSlice(index, begin, length, data);
+	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
+		try {
+			boolean isPieceCompleted = this.downloadTasks.get(infoHash).getFileMetadata().writeSlice(index, begin, length, data);
 
-		syncDownloadTasksToDisk();
+			syncDownloadTasksToDisk();
 
-		// TODO: Notify all of peers that are interested in me.
-		if (isPieceCompleted)
-			this.connectionManager.notifyPeersIHavePiece(infoHash, index);
+			// TODO: Notify all of peers that are interested in me.
+			if (isPieceCompleted)
+				this.connectionManager.notifyPeersIHavePiece(infoHash, index);
+		} catch (IOException e) {
+			// TODO:
+			// Failed to open temp file or failed to sych tasks to disk.
+			// In any case, we should stop this task(do not need to shutdown the whole system).
+			e.printStackTrace();
+		}
 	}
 
 	public void requestMoreSlices(String infoHash, PeerConnection connection) {

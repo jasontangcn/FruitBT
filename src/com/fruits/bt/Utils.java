@@ -74,7 +74,7 @@ public class Utils {
 				buffer.clear();
 			}
 		} finally {
-			if ((channel != null) && (channel.isOpen())) {
+			if (channel != null && channel.isOpen()) {
 				try {
 					channel.close();
 				} catch (IOException e) {

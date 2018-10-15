@@ -25,6 +25,28 @@ import com.fruits.bt.PeerMessage.ChokeMessage;
 import com.fruits.bt.PeerMessage.HaveMessage;
 import com.fruits.bt.PeerMessage.UnchokeMessage;
 
+
+/*
+ * Regarding the network excepton.
+ * 
+ * Server->Client
+ * Anybody close the channel, this channel will not be selected in the next round.
+ * But the peer do not know these, the channel still is considered as open till try to read/write data and it will throw exception.
+ * 
+ * Exception in thread "main" java.io.IOException: An established connection was aborted by the software in your host machine
+ * 				at sun.nio.ch.SocketDispatcher.write0(Native Method)
+ * 				at sun.nio.ch.SocketDispatcher.write(Unknown Source)
+ * 				at sun.nio.ch.IOUtil.writeFromNativeBuffer(Unknown Source)
+ * 				at sun.nio.ch.IOUtil.write(Unknown Source)
+ * 				at sun.nio.ch.SocketChannelImpl.write(Unknown Source)
+ * 				at com.fruits.sample.NIOClientTest.main(NIOClientTest.java:51)
+ */
+
+/*
+ * How to manage the system? Client?
+ * If component fails, how to deal it? e.g. PeerConnecitonManger fails because of IOException.
+ * 
+ */
 public class PeerConnectionManager implements Runnable {
 	private Thread connectionManagerThread = null;
 
@@ -142,96 +164,126 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	public void run() {
-		/*
-		 * try {
-		 */
-		this.serverChannel = ServerSocketChannel.open();
-		serverChannel.configureBlocking(false);
-		serverChannel.socket().setReuseAddress(true);
-		serverChannel.socket().bind(listenEndpoint);
-		System.out.println("Listening at : " + listenEndpoint + ".");
-		serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+		try {
+			this.serverChannel = ServerSocketChannel.open();
+			serverChannel.configureBlocking(false);
+			serverChannel.socket().setReuseAddress(true);
+			serverChannel.socket().bind(listenEndpoint);
+			System.out.println("Listening at : " + listenEndpoint + ".");
+			serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-		for (;;) {
-			if (Thread.interrupted())
-				break;
+			for (;;) {
+				if (Thread.interrupted())
+					break;
 
-			System.out.println("Acquiring selector lock.");
-			selectorLock.lock();
-			System.out.println("Acquired selector lock.");
-			selectorLock.unlock();
+				System.out.println("Acquiring selector lock.");
+				selectorLock.lock();
+				System.out.println("Acquired selector lock.");
+				selectorLock.unlock();
 
-			System.out.println("Selecting keys.");
-			// Select blocks until at least one key is selected.
-			selector.select(); // IOException, ClosedSelectorException
-			System.out.println("Some keys got selected.");
+				System.out.println("Selecting keys.");
+				// Select blocks until at least one key is selected.
+				selector.select(); // IOException, ClosedSelectorException
+				System.out.println("Some keys got selected.");
 
-			Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
-			while (selectedKeys.hasNext()) {
-				SelectionKey key = (SelectionKey) selectedKeys.next();
-				// Is it required?
-				selectedKeys.remove();
+				Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
+				while (selectedKeys.hasNext()) {
+					SelectionKey key = (SelectionKey) selectedKeys.next();
+					// Is it required?
+					selectedKeys.remove();
 
-				if (!key.isValid())
-					continue;
+					if (!key.isValid())
+						continue;
 
-				if (key.isAcceptable()) {
-					ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
-					SocketChannel socketChannel = serverSocket.accept(); // Lots of exceptions may be thrown.
-					socketChannel.configureBlocking(false);
-					System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
+					if (key.isAcceptable()) {
+						ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
+						SocketChannel socketChannel = serverSocket.accept(); // Lots of exceptions may be thrown.
+						try {
+							socketChannel.configureBlocking(false);
+							System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
 
-					PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager);
-					Peer self = new Peer();
-					// TODO: peerId managing.
-					self.setPeerId(Client.PEER_ID);
-					self.setAddress((InetSocketAddress) socketChannel.getLocalAddress()); // IOException, ClosedChannelException
-					// self.setLocal((InetSocketAddress)serverSocket.getLocalAddress());
-					conn.setSelf(self);
-					conn.setState(State.IN_ACCEPTED);
+							PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager);
+							Peer self = new Peer();
+							// TODO: peerId managing.
+							self.setPeerId(Client.PEER_ID);
+							self.setAddress((InetSocketAddress) socketChannel.getLocalAddress()); // IOException, ClosedChannelException
+							// self.setLocal((InetSocketAddress)serverSocket.getLocalAddress());
+							conn.setSelf(self);
+							conn.setState(State.IN_ACCEPTED);
 
-					socketChannel.register(selector, SelectionKey.OP_READ, conn); // Lots of exceptions may be thrown.
-				} else if (key.isReadable()) {
-					System.out.println("[In Selector] Ready to read.");
-					((PeerConnection) key.attachment()).readMessage();
-				} else if (key.isWritable()) {
-					System.out.println("[In Selector] Ready to write.");
-					((PeerConnection) key.attachment()).writeMessage();
-				} else if (key.isConnectable()) {
-					System.out.println("[In Selector] Ready to connect to remote peer.");
-					SocketChannel socketChannel = (SocketChannel) key.channel();
-					PeerConnection conn = (PeerConnection) key.attachment();
-					if (socketChannel.finishConnect()) { // Lots of exceptions may be thrown.
-						System.out.println("[In Selector] Completed outgoing connecting to peer.");
-						conn.setState(State.OUT_CONNECTED);
-						conn.writeMessage();
+							socketChannel.register(selector, SelectionKey.OP_READ, conn); // Lots of exceptions may be thrown.
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					} else if (key.isReadable()) {
+						System.out.println("[In Selector] Ready to read.");
+						((PeerConnection) key.attachment()).readMessage();
+					} else if (key.isWritable()) {
+						System.out.println("[In Selector] Ready to write.");
+						((PeerConnection) key.attachment()).writeMessage();
+					} else if (key.isConnectable()) {
+						System.out.println("[In Selector] Ready to connect to remote peer.");
+						SocketChannel socketChannel = (SocketChannel) key.channel();
+						PeerConnection conn = (PeerConnection) key.attachment();
+						try {
+							if (socketChannel.finishConnect()) { // Lots of exceptions may be thrown.
+								System.out.println("[In Selector] Completed outgoing connecting to peer.");
+								conn.setState(State.OUT_CONNECTED);
+								conn.writeMessage();
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+							this.closeChannel(socketChannel);
+							// This channel may be closed, just cancel the key because this connection is not yet managed by PeerConnectionManager.
+							key.cancel();
+						}
 					}
 				}
 			}
+		} catch (Exception e) {
+			// TODO: Shall I call it or the Client call it?
+			this.stop();
+			
+			throw new RuntimeException(e);
 		}
-		/**
-		 * } catch (Exception e) { throw new RuntimeException(e); }
-		 */
+
 	}
 
+	private void closeChannel(SocketChannel channel) {
+		try {
+		  if(channel != null && channel.isOpen())
+		  	channel.close();
+		  }catch(IOException ioe) {
+			  ioe.printStackTrace();
+		  }
+	}
+	
 	public PeerConnection createOutgoingConnection(Peer self, Peer peer) {
-		SocketChannel socketChannel = SocketChannel.open(); // IOException
-		socketChannel.configureBlocking(false);
-		socketChannel.socket().setReuseAddress(true); // SocketException
-		// socketChannel.bind(new InetSocketAddress("127.0.0.1", 6666));
-		// TODO: Random binding to local address?
-		socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
-		System.out.println("Connection to " + peer.getAddress() + ".");
-		PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager);
-
-		self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
-		conn.setSelf(self);
-		conn.setPeer(peer);
-
-		// TODO: VERY IMPORTANT!
-		// selector.select() is blocking, and register() is blocking too.
-		register(socketChannel, SelectionKey.OP_CONNECT, conn);
-
+		SocketChannel socketChannel = null;
+		PeerConnection conn = null;
+		try {
+			socketChannel = SocketChannel.open(); // IOException
+			socketChannel.configureBlocking(false);
+			socketChannel.socket().setReuseAddress(true); // SocketException
+			// socketChannel.bind(new InetSocketAddress("127.0.0.1", 6666));
+			// TODO: Random binding to local address?
+			socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
+			System.out.println("Connection to " + peer.getAddress() + ".");
+			conn = new PeerConnection(true, socketChannel, this, downloadManager);
+	
+			self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
+			conn.setSelf(self);
+			conn.setPeer(peer);
+	
+			// TODO: VERY IMPORTANT!
+			// selector.select() is blocking, and register() is blocking too.
+			register(socketChannel, SelectionKey.OP_CONNECT, conn);
+		}catch(IOException e) {
+			System.out.println("Failed to create connection -> self : " + self + ", peer : " + peer);
+			e.printStackTrace();
+			
+			this.closeChannel(socketChannel);
+		}
 		return conn;
 	}
 
@@ -243,7 +295,7 @@ public class PeerConnectionManager implements Runnable {
 		this.connectionManagerThread.interrupt();
 
 		try {
-			if ((this.serverChannel != null) && (this.serverChannel.isOpen())) {
+			if (this.serverChannel != null && this.serverChannel.isOpen()) {
 				this.serverChannel.close(); // IOException
 			}
 		} catch (IOException e) {
@@ -251,11 +303,21 @@ public class PeerConnectionManager implements Runnable {
 		}
 
 		try {
-			if ((this.selector != null) && (this.selector.isOpen())) {
+			if (this.selector != null && this.selector.isOpen()) {
 				this.selector.close(); // IOException
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+		
+		// TODO: Close all of the connections.
+		Iterator<String> iterator = this.peerConnections.keySet().iterator();
+		while(iterator.hasNext()) {
+			String key = iterator.next();
+			List<PeerConnection> connections = this.peerConnections.get(key);
+			for(PeerConnection conn : connections) {
+				conn.close();
+			}
 		}
 	}
 
@@ -274,7 +336,7 @@ public class PeerConnectionManager implements Runnable {
 		return this.peerConnections.get(infoHash);
 	}
 
-	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) {
+	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
 			System.out.println("Wakening the selector.");
@@ -298,6 +360,11 @@ public class PeerConnectionManager implements Runnable {
 		return "Unexpected : " + ops + ".";
 	}
 
+	
+	public void unregister(SocketChannel socketChannel) {
+		socketChannel.keyFor(this.selector).cancel();
+	}
+	
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) {
 		BitSet selfBitfield = this.downloadManager.getBitfield(infoHash);
 
@@ -327,5 +394,15 @@ public class PeerConnectionManager implements Runnable {
 			}
 		}
 		return null;
+	}
+	
+	public void removeClosedConnections(String infoHash) {
+		List<PeerConnection> connections = this.peerConnections.get(infoHash);
+		Iterator<PeerConnection> iterator = connections.iterator();
+		while(iterator.hasNext()) {
+			PeerConnection conn = iterator.next();
+			if(conn.isClosed())
+				iterator.remove();
+		}
 	}
 }

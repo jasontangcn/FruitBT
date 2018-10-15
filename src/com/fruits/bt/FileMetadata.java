@@ -99,7 +99,7 @@ public class FileMetadata implements Serializable {
 
 	private void closeTempFile() {
 		System.out.println("FileMetadata-> Closing temp file.");
-		if ((tempFile != null) && (tempFile.isOpen())) {
+		if (tempFile != null && tempFile.isOpen()) {
 			try {
 				tempFile.close();
 			} catch (IOException e) {
