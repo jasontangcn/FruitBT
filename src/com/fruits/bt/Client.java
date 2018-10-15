@@ -22,7 +22,6 @@ public class Client {
 	private DownloadManager downloadManager;
 
 	static {
-		//try {
 		Properties props = System.getProperties();
 		DOWNLOAD_TASKS_TEMP_FILE = props.getProperty("download.tasks.tmp.file");
 		DOWNLOAD_TEMP_DIR = props.getProperty("download.tmp.dir");
@@ -35,11 +34,8 @@ public class Client {
 		REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
 		REMOTE_PEER_ID = props.getProperty("remote.peer.id");
 
-		System.out.println(DOWNLOAD_TASKS_TEMP_FILE + "," + DOWNLOAD_TEMP_DIR + "," + LISTENER_DOMAIN + "," + LISTENER_PORT
-				+ "," + PEER_ID + "," + REMOTE_DOMAIN + "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
-		//}catch(Exception e) {
-		//	e.printStackTrace();
-		//}
+		System.out.println(DOWNLOAD_TASKS_TEMP_FILE + "," + DOWNLOAD_TEMP_DIR + "," + LISTENER_DOMAIN + "," + LISTENER_PORT + "," 
+		                   + PEER_ID + "," + REMOTE_DOMAIN + "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
 	}
 
 	public static void main(String[] args) {
@@ -62,33 +58,19 @@ public class Client {
 
 		// TODO: Its better to bind the socket with a IP instead of a domain.
 
-		File downloadTasksTempFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
-		if (!downloadTasksTempFile.exists()) {
-			downloadTasksTempFile.createNewFile();
+		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
+		if (!tasksFile.exists()) {
+			tasksFile.createNewFile();
 		}
 
-		this.connectionManager = new PeerConnectionManager(
-				new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT));
+		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT));
 		this.downloadManager = new DownloadManager(connectionManager);
 		this.connectionManager.setDownloadManager(downloadManager);
 
 		connectionManager.start();
 
 		//downloadManager.addDownloadTask("doc\\\\Wireshark-win32-1.10.0.exe.torrent");
-		//System.out.println("Start to add torrent seed.");
 		//downloadManager.addDownloadTask("D:\\\\TorrentDownload2\\\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadFile("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
-		/*
-		List<TorrentSeed> torrentSeeds = downloadManager.getTorrentSeeds();
-		
-		for(TorrentSeed seed : torrentSeeds) {
-			Peer self = new Peer();
-			//TODO: Give the correct peerId, infoHash and bitfield.
-			List<Peer> peers = trackerManager.getPeers(seed);
-			for(Peer peer : peers) {
-				connectionManager.createOutgoingConnect(self, peer);
-			}
-		}*/
-
 	}
 }
