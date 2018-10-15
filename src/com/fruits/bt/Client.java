@@ -56,7 +56,6 @@ public class Client {
 		//    (4) keep_alive, choke, unchoke, interested, not_interested, port
 		//        bitfield, request, have, cancel
 		//        Most import messages: bitfield, request, have
-
 		// TODO: Its better to bind the socket with a IP instead of a domain.
 
 		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
