@@ -28,7 +28,7 @@ public class FileMetadata implements Serializable {
 	private List<Piece> pieces;
 	private int piecesCompleted;
 
-	private transient FileChannel tempFile;
+	private transient FileChannel file;
 
 	// TODO: Need a Externalizable?
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
@@ -91,17 +91,17 @@ public class FileMetadata implements Serializable {
 
 	// TODO:
 	// Need Multi thread consideration.
-	private void openTempFile() throws IOException {
-		if (this.tempFile == null) {
-			this.tempFile = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
+	private void openFile() throws IOException {
+		if (this.file == null) {
+			this.file = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
 		}
 	}
 
-	private void closeTempFile() {
+	private void closeFile() {
 		System.out.println("FileMetadata-> Closing temp file.");
-		if (tempFile != null && tempFile.isOpen()) {
+		if (file != null && file.isOpen()) {
 			try {
-				tempFile.close();
+				file.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -111,28 +111,28 @@ public class FileMetadata implements Serializable {
 	// TODO: Who and when to call it?
 	// Added a hook for VM?
 	public void finalize() {
-		this.closeTempFile();
+		this.closeFile();
 	}
 
 	// @ return Slices of current piece are completed?
 	// TODO: VERY IMPORTANT!
 	// Previou verion we got IOException.
-	// Only if opening temp file fails, throw the IOException.
+	// Only if opening file fails, throw the IOException.
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is writing slice.");
-		openTempFile();
+		openFile();
 		// int or long?
 		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
 		try {
-			this.tempFile.write(data, startPos);
+			this.file.write(data, startPos);
 		} catch (IOException e) {
 			e.printStackTrace();
 			// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 			return false;
 		}
-		//tempFile.seek(startPosition);
+		//file.seek(startPosition);
 		//TODO: length or data.array().length?
-		//tempFile.write(data.array(), 0, length);
+		//file.write(data.array(), 0, length);
 		this.pieces.get(index).setSliceCompleted(begin);
 		boolean isPieceCompleted = pieces.get(index).isAllSlicesCompleted();
 		if (isPieceCompleted) {
@@ -193,7 +193,7 @@ public class FileMetadata implements Serializable {
 	public ByteBuffer readSlice(Slice slice) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is reading slice.");
 
-		openTempFile();
+		openFile();
 
 		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
 		//byte[] buffer = new byte[slice.getLength()];
@@ -204,7 +204,7 @@ public class FileMetadata implements Serializable {
 			//tempFile.seek(startPos);
 			//tempFile.read(buffer);
 			//tempFile.close();
-			this.tempFile.read(buffer, startPos);
+			this.file.read(buffer, startPos);
 		} catch (IOException e) {
 			e.printStackTrace();
 			// If read fails, return null.

@@ -36,6 +36,7 @@ public class PeerConnection {
 
 	private State state = State.UNDEFINED;
 
+	private final boolean isOutgoingConnect;
 	private final SocketChannel socketChannel;
 	private final PeerConnectionManager connectionManager;
 	private final DownloadManager downloadManager;
@@ -44,7 +45,6 @@ public class PeerConnection {
 
 	private Peer self;
 	private Peer peer;
-	private final boolean isOutgoingConnect;
 
 	// Initial status.
 	private boolean choking = true; // choking peer
@@ -57,6 +57,8 @@ public class PeerConnection {
 	private long timeLastRead;
 	private long timeLastWrite;
 
+	// TODO: XXXX
+	// Batch send/receive may not work well because of unexpected communication.
 	private int indexRequesting = -1;
 	private int requestsSent;
 	private int piecesReceived;
@@ -188,11 +190,11 @@ public class PeerConnection {
 				}
 
 				this.downloadManager.cancelRequestingPiece(self.getInfoHash(), this);
-
+				/*
 				this.indexRequesting = -1;
 				this.requestsSent = 0;
 				this.piecesReceived = 0;
-
+				*/
 			} else if (message instanceof UnchokeMessage) {
 				this.choked = false;
 				System.out.println("PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
@@ -526,12 +528,12 @@ public class PeerConnection {
 
 	// TODO: Connection managing.
 	// Is it enough?
-	public void close(boolean removeImmediately) {
+	public void close() {
 		// 1. Cancel the key.
 		// 2. Close the channel.
 		// 3. Cancel the indexes requesting in DownloadManager.
 		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
-
+		System.out.println("Closing PeerConnection : " + this);
 		this.connectionManager.unregister(this.socketChannel);
 		if (socketChannel.isOpen()) {
 			try {
@@ -543,8 +545,8 @@ public class PeerConnection {
 		String infoHash = self.getInfoHash();
 		this.downloadManager.cancelRequestingPiece(infoHash, this);
 		this.closed = true;
-		if(removeImmediately)
-			this.connectionManager.removeClosedConnections(infoHash);
+		// Mark and then remove it, 
+	  this.connectionManager.removeClosedConnections(infoHash);
 	}
 
 	public State getState() {

@@ -42,6 +42,16 @@ public class Client {
 	public static void main(String[] args) throws IOException {
 		Client client = new Client();
 		client.start();
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				System.out.println("System is shuting down.");
+				long begin = System.currentTimeMillis();
+				// This is used to close the channel for the file in FileMetadata.
+				client.stop();
+				System.out.println("Shuting down system spent " + (System.currentTimeMillis() - begin)  + " ms.");
+			}
+		});
 	}
 
 	public void start() throws IOException {
@@ -67,16 +77,20 @@ public class Client {
 		this.downloadManager = new DownloadManager(connectionManager);
 		this.connectionManager.setDownloadManager(downloadManager);
 
-		connectionManager.start();
+		connectionManager.start(new Thread.UncaughtExceptionHandler(){
+	    public void uncaughtException(Thread thead, Throwable exception) {
+	    	System.out.println("PeerConnectionManager failed, we are going to fail the whole system.");
+	    	System.exit(0);
+	    }
+		}); // connectionManager is run in a new thread.
 
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			public void run() {
-				// This is used to close the channel for the temp file in FileMetadata.
-				downloadManager.finalize();
-			}
-		});
 		//downloadManager.addDownloadTask("doc\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.addDownloadTask("D:\\TorrentDownload2\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadFile("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
+	}
+	
+	public void stop() {
+		this.downloadManager.stopAllDownloadTasks();
+		this.connectionManager.stop();
 	}
 }

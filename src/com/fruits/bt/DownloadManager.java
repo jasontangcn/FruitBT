@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -123,13 +124,32 @@ public class DownloadManager {
 		*/
 	}
 
-	public void startDownloadAllFiles() {
+	public void startAllDownloadTasks() {
 	}
 
+	public void stopAllDownloadTasks() {
+		Iterator<String> iterator = this.downloadTasks.keySet().iterator();
+		while(iterator.hasNext()) {
+			stopDownloadFile(iterator.next());
+		}
+	}
+
+	
 	public void stopDownloadFile(String infoHash) {
+		// 0. Add a DownloadTask in DownloadManager.
+		// 1. Open a temp file.
+		// 2. Open download task file.
+		// 3. Create outgoing connections, and may accept incoming connections.
+		// 4. Some working variables, e.g. indexesRequesting.
+		
+		// 1. Close the connections.
+		// 2. Remove the requesting index.
+		// 3. Close download task file and temp file.
+		this.connectionManager.closeConnections(infoHash);
+		this.downloadTasks.get(infoHash).getFileMetadata().finalize();
 	}
 
-	public void pauseDownloadFile(String infoHash) {
+	public void pauseDownloadTask(String infoHash) {
 	}
 
   // IOException may be caused by : failed to parse seed file or failed to create FileMetadata.
@@ -155,6 +175,7 @@ public class DownloadManager {
 		return this.downloadTasks.get(infoHash);
 	}
 
+	// If task completed, shall we remove the corresponding download task?
 	public void removeDownloadTask(String infoHash, boolean deleteTempFiles) {
 		this.downloadTasks.remove(infoHash);
 		
@@ -192,7 +213,7 @@ public class DownloadManager {
 			// TODO:
 			// If exception caught, failed to open temp file, it's fatal error.
 			e.printStackTrace();
-			this.failTask(infoHash);
+			this.stopDownloadFile(infoHash);
 			return null;
 		}
 	}
@@ -209,7 +230,7 @@ public class DownloadManager {
 			if (isPieceCompleted)
 				this.connectionManager.notifyPeersIHavePiece(infoHash, index);
 			
-			// The file has been completed.
+			// The file has been completed. Let somebody know?
 			if(metadata.isAllPiecesCompleted()) {
 				// TODO: XXXX
 			}
@@ -219,7 +240,7 @@ public class DownloadManager {
 			// Failed to open temp file or failed to sych tasks to disk.
 			// In any case, we should stop this task(do not need to fail the whole system).
 			e.printStackTrace();
-			this.failTask(infoHash);
+			this.stopDownloadFile(infoHash);
 		}
 	}
 
@@ -291,19 +312,5 @@ public class DownloadManager {
 		if (indexRequesting != -1) {
 			this.indexesRequesting.get(infoHash).remove(new Integer(indexRequesting));
 		}
-	}
-	
-	public void failTask(String infoHash) {
-		// 0. Add a DownloadTask in DownloadManager.
-		// 1. Open a temp file.
-		// 2. Open download task file.
-		// 3. Create outgoing connections, and may accept incoming connections.
-		// 4. Some working variables, e.g. indexesRequesting.
-		
-		// 1. Close the connections.
-		// 2. Remove the requesting index.
-		// 3. Close download task file and temp file.
-		this.connectionManager.fail(infoHash);
-		this.downloadTasks.get(infoHash).getFileMetadata().finalize();
 	}
 }

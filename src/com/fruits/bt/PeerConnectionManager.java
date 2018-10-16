@@ -160,9 +160,10 @@ public class PeerConnectionManager implements Runnable {
 		this.downloadManager = downloadManager;
 	}
 
-	public void start() {
-		connectionManagerThread = new Thread(this);
-		connectionManagerThread.start();
+	public void start(Thread.UncaughtExceptionHandler handler) {
+		this.connectionManagerThread = new Thread(this);
+		this.connectionManagerThread.setUncaughtExceptionHandler(handler);
+		this.connectionManagerThread.start();
 	}
 
 	public void run() {
@@ -314,16 +315,6 @@ public class PeerConnectionManager implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		// TODO: Close all of the connections.
-		Iterator<String> iterator = this.peerConnections.keySet().iterator();
-		while(iterator.hasNext()) {
-			String key = iterator.next();
-			List<PeerConnection> connections = this.peerConnections.get(key);
-			for(PeerConnection conn : connections) {
-				conn.close();
-			}
-		}
 	}
 
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
@@ -369,6 +360,7 @@ public class PeerConnectionManager implements Runnable {
 	public void unregister(SocketChannel socketChannel) {
 		if(socketChannel.isRegistered()) // it may be registered in multiple selectors.
 		  socketChannel.keyFor(this.selector).cancel();
+		selector.wakeup();
 	}
 	
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) {
@@ -412,15 +404,14 @@ public class PeerConnectionManager implements Runnable {
 		}
 	}
 	
-	public void fail(String infoHash) {
+	public void closeConnections(String infoHash) {
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 
 		Iterator<PeerConnection> iterator = connections.iterator();
 		while(iterator.hasNext()) {
 			PeerConnection conn = iterator.next();
-			conn.close(false);
+			iterator.remove();
+			conn.close();
 		}
-		
-		this.removeClosedConnections(infoHash);
 	}
 }

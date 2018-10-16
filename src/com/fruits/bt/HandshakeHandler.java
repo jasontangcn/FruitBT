@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class HandshakeHandler {
+	// The PeerConnection this handler works for.
 	private final PeerConnection connection;
 
 	private ByteBuffer readBuffer = ByteBuffer.allocate(HandshakeMessage.HANDSHAKE_MESSAGE_LENGTH);
@@ -17,11 +18,7 @@ public class HandshakeHandler {
 	public HandshakeMessage readMessage() {
 		SocketChannel socketChannel = this.connection.getChannel();
 		try {
-			if (socketChannel.read(readBuffer) == -1) { // IOException
-				// Channel is closed? 
-				// To close the channel? 
-				// To unregister the channel from the Selector with the cancel() method?
-				//
+			if (socketChannel.read(readBuffer) == -1) { // -1 or IOException
 				this.connection.close();
 				return null;
 			} else {
