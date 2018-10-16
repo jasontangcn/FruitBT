@@ -17,7 +17,7 @@ public class HandshakeHandler {
 	public HandshakeMessage readMessage() {
 		SocketChannel socketChannel = this.connection.getChannel();
 		try {
-			if (socketChannel.read(readBuffer) == -1) {
+			if (socketChannel.read(readBuffer) == -1) { // IOException
 				// Channel is closed? 
 				// To close the channel? 
 				// To unregister the channel from the Selector with the cancel() method?
@@ -44,7 +44,7 @@ public class HandshakeHandler {
 		do {
 			int n = -1;
 			try {
-				n = socketChannel.write(messageBytesToSend);
+				n = socketChannel.write(messageBytesToSend); // IOException
 			} catch (IOException e) {
 				e.printStackTrace();
 				this.connection.close();

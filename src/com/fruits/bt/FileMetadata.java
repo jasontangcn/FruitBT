@@ -34,7 +34,7 @@ public class FileMetadata implements Serializable {
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
 	public FileMetadata(TorrentSeed seed) throws IOException {
 		this.seed = seed;
-		this.filePath = Client.DOWNLOAD_TEMP_DIR + File.separator + seed.getInfoHash() + ".tmp";
+		this.filePath = Client.DOWNLOAD_TEMP_DIR + File.separator + seed.getName();
 
 		File file = new File(this.filePath);
 		if (!file.exists()) {
@@ -138,18 +138,7 @@ public class FileMetadata implements Serializable {
 		if (isPieceCompleted) {
 			piecesCompleted++;
 		}
-
-		/*
-		 * This action should be performed when the file is completely downloaded.
-			if(isAllPiecesCompleted()) {
-				System.out.println("All of the pieces are completed.");
-				File file = new File(filePath);
-				String newFilePath = Client.DOWNLOAD_TEMP_DIR + "\\\\" + seed.getName();
-				file.renameTo(new File(newFilePath));
-				
-				this.filePath = newFilePath;
-			}
-		*/
+		
 		return isPieceCompleted;
 	}
 

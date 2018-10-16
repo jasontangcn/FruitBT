@@ -60,7 +60,7 @@ public class PeerConnection {
 	private int indexRequesting = -1;
 	private int requestsSent;
 	private int piecesReceived;
-	private volatile boolean closing = false;
+	private volatile boolean closed = false;
 
 	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
 		this.isOutgoingConnect = isOutgoingConnect;
@@ -187,7 +187,7 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.cancelRequestPiece(self.getInfoHash(), this);
+				this.downloadManager.cancelRequestingPiece(self.getInfoHash(), this);
 
 				this.indexRequesting = -1;
 				this.requestsSent = 0;
@@ -235,6 +235,7 @@ public class PeerConnection {
 			} else if (message instanceof RequestMessage) {
 				RequestMessage request = (RequestMessage) message;
 				Slice slice = new Slice(request.getIndex(), request.getBegin(), request.getLength());
+				// TODO: data may null if failed to read slice.
 				ByteBuffer data = this.downloadManager.readSlice(self.getInfoHash(), slice);
 				if (data != null) {
 					PieceMessage pieceMessage = new PieceMessage(slice.getIndex(), slice.getBegin(), data);
@@ -244,7 +245,7 @@ public class PeerConnection {
 				PieceMessage piece = (PieceMessage) message;
 				// Is it OK to use .limit() to get the length of the ByteBuffer?
 				// TODO: XXXX
-				// Slient but the write may fail.
+				// Silent but the writing may fail.
 				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
 				this.piecesReceived++;
 
@@ -276,7 +277,7 @@ public class PeerConnection {
 		}
 	}
 
-	public void writeMessage() {
+	public void writeMessage() { // No exception is thrown, the exceptions are handled in where they appear.
 		if (this.state == State.IN_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!this.handshakeHandler.isSendingInProgress()) {
 				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()), self.getPeerId().getBytes());
@@ -525,18 +526,13 @@ public class PeerConnection {
 
 	// TODO: Connection managing.
 	// Is it enough?
-	public void close() {
-		// 2. Cancel the indexes requesting in DownloadManager.
-		// 3. Remove this connection from the peerConnections in PeerConnecionManager.
+	public void close(boolean removeImmediately) {
 		// 1. Cancel the key.
-		// 4. Close the channel.
-		String infoHash = self.getInfoHash();
-		this.downloadManager.cancelRequestPiece(infoHash, this);
-		this.closing = true;
-		this.connectionManager.removeClosedConnections(infoHash);
+		// 2. Close the channel.
+		// 3. Cancel the indexes requesting in DownloadManager.
+		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
 
 		this.connectionManager.unregister(this.socketChannel);
-
 		if (socketChannel.isOpen()) {
 			try {
 				socketChannel.close();
@@ -544,6 +540,11 @@ public class PeerConnection {
 				e.printStackTrace();
 			}
 		}
+		String infoHash = self.getInfoHash();
+		this.downloadManager.cancelRequestingPiece(infoHash, this);
+		this.closed = true;
+		if(removeImmediately)
+			this.connectionManager.removeClosedConnections(infoHash);
 	}
 
 	public State getState() {
@@ -626,8 +627,8 @@ public class PeerConnection {
 		this.requestsSent = requestsSent;
 	}
 
-	public boolean isClosing() {
-		return this.closing;
+	public boolean isClosed() {
+		return this.closed;
 	}
 
 	public SocketChannel getChannel() {

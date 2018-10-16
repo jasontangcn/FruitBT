@@ -82,7 +82,11 @@ public class PeerMessageHandler {
 			if (lengthPrefix == -1) {
 				this.readBuffer.limit(PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 				// NotYetConnectedException if the channel is not connected.
-				socketChannel.read(readBuffer);
+				int n = socketChannel.read(readBuffer); // IOException
+				if(n == -1) {
+					this.connection.close();
+					return null;
+				}
 				if (readBuffer.hasRemaining()) {
 					return null;
 				}
@@ -91,7 +95,7 @@ public class PeerMessageHandler {
 				readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 			}
 			// NotYetConnectedException if the channel is not connected.
-			int count = socketChannel.read(readBuffer);
+			int count = socketChannel.read(readBuffer); // IOException
 			if (count == -1)
 				return null; // TODO: should close the connection.
 			if (readBuffer.hasRemaining()) {
