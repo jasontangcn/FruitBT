@@ -25,9 +25,8 @@ public class PeerMessageHandler {
 
 	// A separate thread will calculate the download rate and upload rate by every 10 seconds.
 	private long bytesReadPrePeriod;
-	private long timePreRead = System.currentTimeMillis();
-	private long timePreWrite = System.currentTimeMillis();
 	private long bytesWritePrePeriod;
+	private long timePrePeriod = System.currentTimeMillis();
 	private float readRate;
 	private float writeRate;
 
@@ -48,19 +47,19 @@ public class PeerMessageHandler {
 	}
 
 	public void calculateReadWriteRate() {
+		long time = System.currentTimeMillis() - this.timePrePeriod;
 		// bytes read/ms
-		this.readRate = ((this.bytesRead - this.bytesReadPrePeriod) / (System.currentTimeMillis() - this.timePreRead));
+		this.readRate = ((this.bytesRead - this.bytesReadPrePeriod) / time);
 		// bytes write/ms
-		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / (System.currentTimeMillis() - this.timePreWrite));
+		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / time);
 
-		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePreRead
-				+ ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ", timePreWrite = " + timePreWrite + ",\n"
+		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePrePeriod
+				+ ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ",\n"
 				+ "readRate = " + readRate + " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
 
 		this.bytesReadPrePeriod = this.bytesRead;
-		this.timePreRead = System.currentTimeMillis();
 		this.bytesWritePrePeriod = this.bytesWritten;
-		this.timePreWrite = System.currentTimeMillis();
+		this.timePrePeriod = System.currentTimeMillis();
 	}
 
 	// message type id
@@ -84,7 +83,7 @@ public class PeerMessageHandler {
 				// NotYetConnectedException if the channel is not connected.
 				int n = socketChannel.read(readBuffer); // IOException
 				if(n == -1) {
-					this.connection.close();
+					this.connection.selfClose();
 					return null;
 				}
 				if (readBuffer.hasRemaining()) {
@@ -95,9 +94,11 @@ public class PeerMessageHandler {
 				readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 			}
 			// NotYetConnectedException if the channel is not connected.
-			int count = socketChannel.read(readBuffer); // IOException
-			if (count == -1)
+			int n = socketChannel.read(readBuffer); // IOException
+			if (n == -1) {
+				this.connection.selfClose();
 				return null; // TODO: should close the connection.
+			}
 			if (readBuffer.hasRemaining()) {
 				return null;
 			} else {
@@ -114,7 +115,7 @@ public class PeerMessageHandler {
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
-			this.connection.close();
+			this.connection.selfClose();
 			return null;
 		}
 	}
@@ -137,7 +138,7 @@ public class PeerMessageHandler {
 				n = socketChannel.write(this.messageBytesToWrite); // NotYetConnectedException
 			} catch (IOException e) {
 				e.printStackTrace();
-				this.connection.close();
+				this.connection.selfClose();
 				return false;
 			}
 			if (n == 0)
@@ -177,12 +178,10 @@ public class PeerMessageHandler {
 	}
 
 	public float getReadRate() {
-		calculateReadWriteRate();
 		return this.readRate;
 	}
 
 	public float getWriteRate() {
-		calculateReadWriteRate();
 		return this.writeRate;
 	}
 }

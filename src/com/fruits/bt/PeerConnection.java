@@ -8,6 +8,7 @@ import java.nio.channels.SocketChannel;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.fruits.bt.PeerMessage.BitfieldMessage;
@@ -35,8 +36,9 @@ public class PeerConnection {
 	}
 
 	private State state = State.UNDEFINED;
-
-	private final boolean isOutgoingConnect;
+	private String connectionId;
+	
+	private final boolean isOutgoingConnection;
 	private final SocketChannel socketChannel;
 	private final PeerConnectionManager connectionManager;
 	private final DownloadManager downloadManager;
@@ -62,10 +64,9 @@ public class PeerConnection {
 	private int indexRequesting = -1;
 	private int requestsSent;
 	private int piecesReceived;
-	private volatile boolean closed = false;
 
-	public PeerConnection(boolean isOutgoingConnect, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
-		this.isOutgoingConnect = isOutgoingConnect;
+	public PeerConnection(boolean isOutgoingConnection, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
+		this.isOutgoingConnection = isOutgoingConnection;
 		this.socketChannel = socketChannel;
 		this.connectionManager = connectionManager;
 		this.downloadManager = downloadManager;
@@ -155,6 +156,8 @@ public class PeerConnection {
 				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
+				
+				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
 
 				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
@@ -297,7 +300,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 			} else {
@@ -306,7 +309,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 				System.out.println("Status : " + this.state + ", completed writing handshake message to peer.");
@@ -330,12 +333,14 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 			} else {
 				// It should be incoming connection.
 				this.state = State.IN_EXCHANGE_BITFIELD_COMPLETED;
+				
+				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				System.out.println("Status : " + this.state + ", completed writing bitfield message to peer.");
@@ -367,7 +372,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 			} else {
@@ -376,7 +381,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 				System.out.println("Status : " + this.state + ", completed writing handshake message to peer.");
@@ -401,7 +406,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 			} else {
@@ -410,7 +415,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 				System.out.println("Status : " + this.state + ", completed writing bitfield message to peer.");
@@ -432,7 +437,7 @@ public class PeerConnection {
 						this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 					} catch (IOException e) {
 						e.printStackTrace();
-						this.close();
+						this.selfClose();
 						return;
 					}
 					System.out.println("Status : " + this.state + ", no message in the queue, unregistered OP_WRITE for this channel.");
@@ -450,7 +455,7 @@ public class PeerConnection {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					e.printStackTrace();
-					this.close();
+					this.selfClose();
 					return;
 				}
 				break;
@@ -520,14 +525,23 @@ public class PeerConnection {
 				this.addMessageToSend(keepAliveMessage);
 			}
 
-			if (now - this.timeLastRead > 3 * 60 * 1000) {
-				this.close();
+			if (now - this.timeLastRead > 3 * 60 * 1000) { // Shall I close it, if the connection does not send message but I could request data from him?
+				this.selfClose();
 			}
 		}
 	}
 
+	public void selfClose() {
+		this.close();
+		
+		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
+			this.connectionManager.removePeerConnection(this.self.getPeerId(), this.connectionId);
+		}
+	}
+	
 	// TODO: Connection managing.
 	// Is it enough?
+	// TODO: Carefully! close may be called during the handshake stage, so self.getInfoHash may return NULL?
 	public void close() {
 		// 1. Cancel the key.
 		// 2. Close the channel.
@@ -544,9 +558,6 @@ public class PeerConnection {
 		}
 		String infoHash = self.getInfoHash();
 		this.downloadManager.cancelRequestingPiece(infoHash, this);
-		this.closed = true;
-		// Mark and then remove it, 
-	  this.connectionManager.removeClosedConnections(infoHash);
 	}
 
 	public State getState() {
@@ -557,6 +568,10 @@ public class PeerConnection {
 		this.state = state;
 	}
 
+	public String getConnectionId() {
+		return connectionId;
+	}
+	
 	public Peer getSelf() {
 		return self;
 	}
@@ -573,8 +588,8 @@ public class PeerConnection {
 		this.peer = peer;
 	}
 
-	public boolean isOutgoingConnect() {
-		return isOutgoingConnect;
+	public boolean isOutgoingConnection() {
+		return isOutgoingConnection;
 	}
 
 	public boolean isChoked() {
@@ -628,12 +643,14 @@ public class PeerConnection {
 	public void setRequestsSent(int requestsSent) {
 		this.requestsSent = requestsSent;
 	}
-
-	public boolean isClosed() {
-		return this.closed;
-	}
-
+	
 	public SocketChannel getChannel() {
 		return this.socketChannel;
+	}
+
+	@Override
+	public String toString() {
+		return "PeerConnection [state=" + state + ", connectionId=" + connectionId + ", isOutgoingConnection=" + isOutgoingConnection + ", self=" + self + ", peer="
+				+ peer + ", choking=" + choking + ", interesting=" + interesting + ", choked=" + choked + ", interested=" + interested + "]";
 	}
 }

@@ -28,7 +28,7 @@ public class FileMetadata implements Serializable {
 	private List<Piece> pieces;
 	private int piecesCompleted;
 
-	private transient FileChannel file;
+	private transient FileChannel fileChannel;
 
 	// TODO: Need a Externalizable?
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
@@ -92,22 +92,29 @@ public class FileMetadata implements Serializable {
 	// TODO:
 	// Need Multi thread consideration.
 	private void openFile() throws IOException {
-		if (this.file == null) {
-			this.file = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
+		if (this.fileChannel == null) {
+			this.fileChannel = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
 		}
 	}
 
 	private void closeFile() {
 		System.out.println("FileMetadata-> Closing temp file.");
-		if (file != null && file.isOpen()) {
+		if (fileChannel != null && fileChannel.isOpen()) {
 			try {
-				file.close();
+				fileChannel.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
+	public void deleteFile() {
+		File file = new File(this.filePath);
+		if (file.exists()) {
+			file.delete();
+		}
+
+	}
 	// TODO: Who and when to call it?
 	// Added a hook for VM?
 	public void finalize() {
@@ -124,7 +131,7 @@ public class FileMetadata implements Serializable {
 		// int or long?
 		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
 		try {
-			this.file.write(data, startPos);
+			this.fileChannel.write(data, startPos);
 		} catch (IOException e) {
 			e.printStackTrace();
 			// If write fails, ignore it, pls. never continue to update the metadata of pieces.
@@ -204,7 +211,7 @@ public class FileMetadata implements Serializable {
 			//tempFile.seek(startPos);
 			//tempFile.read(buffer);
 			//tempFile.close();
-			this.file.read(buffer, startPos);
+			this.fileChannel.read(buffer, startPos);
 		} catch (IOException e) {
 			e.printStackTrace();
 			// If read fails, return null.

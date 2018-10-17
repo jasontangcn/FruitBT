@@ -1,5 +1,6 @@
 package com.fruits.bt;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 public class DownloadTask implements Serializable {
@@ -18,8 +19,8 @@ public class DownloadTask implements Serializable {
 	private DownloadState state;
 	private FileMetadata fileMetadata;
 
-	public DownloadTask() {
-
+	public DownloadTask(TorrentSeed seed) throws IOException {
+		this.fileMetadata = new FileMetadata(seed);
 	}
 
 	public DownloadState getState() {

@@ -3,6 +3,7 @@ package com.fruits.sample;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 public class JavaAPITest {
 
@@ -112,6 +113,9 @@ public class JavaAPITest {
 		Path path2 = new File("/home/abc").toPath();
 		int i = 0;
 		*/
+		for(int i = 0; i < 100; i++) {
+		  System.out.println(UUID.randomUUID());
+		}
 	}
 
 	public static class Rate {

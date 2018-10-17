@@ -19,7 +19,7 @@ public class HandshakeHandler {
 		SocketChannel socketChannel = this.connection.getChannel();
 		try {
 			if (socketChannel.read(readBuffer) == -1) { // -1 or IOException
-				this.connection.close();
+				this.connection.selfClose();
 				return null;
 			} else {
 				if (readBuffer.hasRemaining())
@@ -29,7 +29,7 @@ public class HandshakeHandler {
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
-			this.connection.close();
+			this.connection.selfClose();
 			return null;
 		}
 	}
@@ -44,7 +44,7 @@ public class HandshakeHandler {
 				n = socketChannel.write(messageBytesToSend); // IOException
 			} catch (IOException e) {
 				e.printStackTrace();
-				this.connection.close();
+				this.connection.selfClose();
 				return false;
 			}
 			if (n == 0)

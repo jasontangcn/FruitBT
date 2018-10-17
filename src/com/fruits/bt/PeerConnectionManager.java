@@ -119,28 +119,19 @@ public class PeerConnectionManager implements Runnable {
 								System.out.println("Choker-> I am going to unchoke connecton " + conn + ".");
 								conn.setChoking(false);
 								UnchokeMessage unchokeMessage = new UnchokeMessage();
-								// try {
 								conn.addMessageToSend(unchokeMessage);
-								// }catch(Exception e) {
-								// e.printStackTrace();
-								// }
 							}
 						} else {
 							if (!conn.isChoking()) {
 								conn.setChoking(true);
-
 								ChokeMessage chokeMessage = new ChokeMessage();
-								// try {
 								conn.addMessageToSend(chokeMessage);
-								// }catch(Exception e) {
-								// e.printStackTrace();
-								// }
 							}
 						}
 					}
 				}
 			}
-		}, 10L, 20L, TimeUnit.SECONDS);
+		}, 10L, 10L, TimeUnit.SECONDS);
 
 		aliveManager.scheduleAtFixedRate(new Runnable() {
 			public void run() {
@@ -201,10 +192,10 @@ public class PeerConnectionManager implements Runnable {
 					if (key.isAcceptable()) {
 						ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
 						SocketChannel socketChannel = serverSocket.accept(); // Lots of exceptions may be thrown.
+						
 						try {
 							socketChannel.configureBlocking(false);
 							System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
-
 							PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager);
 							Peer self = new Peer();
 							// TODO: peerId managing.
@@ -254,7 +245,7 @@ public class PeerConnectionManager implements Runnable {
 
 	}
 
-	private void closeChannel(SocketChannel channel) {
+	public void closeChannel(SocketChannel channel) {
 		try {
 		  if(channel != null && channel.isOpen())
 		  	channel.close();
@@ -317,8 +308,10 @@ public class PeerConnectionManager implements Runnable {
 		}
 	}
 
+	// For outgoing connection: the connection may not finish connection yet.
+	// For incoming connection: the connection at least has been accepted.
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		System.out.println("New PeerConnection is created, is it outgoing connection? [" + connection.isOutgoingConnect() + "], infoHash = " + infoHash + ", ["
+		System.out.println("New PeerConnection is created, is it outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", ["
 				+ connection + "]");
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
@@ -331,7 +324,31 @@ public class PeerConnectionManager implements Runnable {
 	public List<PeerConnection> getPeerConnections(String infoHash) {
 		return this.peerConnections.get(infoHash);
 	}
+	
+	public void removePeerConnection(String infoHash, String connectionId) {
+		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 
+		Iterator<PeerConnection> iterator = connections.iterator();
+		while(iterator.hasNext()) {
+			PeerConnection conn = iterator.next();
+			if(conn.getConnectionId().equalsIgnoreCase(connectionId)) {
+			  iterator.remove();
+			  break;
+			}
+		}
+	}
+	
+	public void closePeerConnections(String infoHash) {
+		List<PeerConnection> connections = this.peerConnections.get(infoHash);
+
+		Iterator<PeerConnection> iterator = connections.iterator();
+		while(iterator.hasNext()) {
+			PeerConnection conn = iterator.next();
+			iterator.remove();
+			conn.close();
+		}
+	}
+	
 	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
@@ -392,26 +409,5 @@ public class PeerConnectionManager implements Runnable {
 			}
 		}
 		return null;
-	}
-	
-	public void removeClosedConnections(String infoHash) {
-		List<PeerConnection> connections = this.peerConnections.get(infoHash);
-		Iterator<PeerConnection> iterator = connections.iterator();
-		while(iterator.hasNext()) {
-			PeerConnection conn = iterator.next();
-			if(conn.isClosed())
-				iterator.remove();
-		}
-	}
-	
-	public void closeConnections(String infoHash) {
-		List<PeerConnection> connections = this.peerConnections.get(infoHash);
-
-		Iterator<PeerConnection> iterator = connections.iterator();
-		while(iterator.hasNext()) {
-			PeerConnection conn = iterator.next();
-			iterator.remove();
-			conn.close();
-		}
 	}
 }
