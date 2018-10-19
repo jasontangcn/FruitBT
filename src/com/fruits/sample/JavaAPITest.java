@@ -1,9 +1,7 @@
 package com.fruits.sample;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JavaAPITest {
 
@@ -113,9 +111,39 @@ public class JavaAPITest {
 		Path path2 = new File("/home/abc").toPath();
 		int i = 0;
 		*/
+		
+		/*
 		for(int i = 0; i < 100; i++) {
 		  System.out.println(UUID.randomUUID());
 		}
+		*/
+		
+		/*
+		BitSet bitfield = new BitSet(85);
+		System.out.println(bitfield.size());
+		System.out.println(bitfield.length());
+		//bitfield.set(1);
+		System.out.println(bitfield.size());
+		System.out.println(bitfield.length());
+		byte[] bytes = bitfield.toByteArray();
+		System.out.println(bytes.length);
+		BitSet bitset2 = BitSet.valueOf(bytes);
+		System.out.println(bitset2.size());
+		System.out.println(bitset2.length());
+		*/
+		
+		/*
+		Random rand = new Random();
+		for(int i = 0; i < 10; i++) {
+		  int randNum = rand.nextInt(1);
+		  System.out.println(randNum);
+		}
+		*/
+		
+		List<Integer> rarestFirst = new ArrayList<Integer>();
+		rarestFirst.set(3, Integer.valueOf(3));
+		rarestFirst.set(6, Integer.valueOf(2));
+		System.out.println(rarestFirst);
 	}
 
 	public static class Rate {

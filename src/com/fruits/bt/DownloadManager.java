@@ -40,15 +40,14 @@ public class DownloadManager {
 	// 3. Upload slices to peers. 
 	private TrackerManager trackerManager = new TrackerManager();
 
+	private PiecePicker piecePicker;
 	private final PeerConnectionManager connectionManager;
 	// info_hash -> DownloadTask
 	private Map<String, DownloadTask> downloadTasks;
 
-	public static final int REQUEST_MESSAGE_BATCH_SIZE = 3;
-	private Map<String, List<Integer>> indexesRequesting = new HashMap<String, List<Integer>>();
-
 	public DownloadManager(PeerConnectionManager connectionManager) throws IOException {
 		this.connectionManager = connectionManager;
+		this.piecePicker = new PiecePicker(this);
 		loadDownloadTasks();
 
 		// TODO: Test code.
@@ -106,6 +105,9 @@ public class DownloadManager {
 		}
 	}
 
+	public PiecePicker getPiecePicker() {
+		return this.piecePicker;
+	}
 	public void finalize() {
 		for (DownloadTask task : this.downloadTasks.values()) {
 			task.getFileMetadata().finalize();
@@ -226,6 +228,13 @@ public class DownloadManager {
 		return null;
 	}
 
+	public float getPercentCompleted(String infoHash) {
+		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
+		if (downloadTask != null)
+			return downloadTask.getFileMetadata().getPercentCompleted();
+		return -1;
+	}
+	
 	public ByteBuffer readSlice(String infoHash, Slice slice) {
 		try {
 			DownloadTask task = this.downloadTasks.get(infoHash);
@@ -240,7 +249,7 @@ public class DownloadManager {
 			return null;
 		}
 	}
-
+	
 	// TODO: Register listeners to FileMetadata for events, e.g. slice write, piece completed, whole file completed?
 	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
 		try {
@@ -266,76 +275,6 @@ public class DownloadManager {
 			// In any case, we should stop this task(do not need to fail the whole system).
 			e.printStackTrace();
 			this.stopDownloadTask(infoHash);
-		}
-	}
-
-	public void requestMoreSlices(String infoHash, PeerConnection connection) {
-		/*
-		 * 1. Check the slices one by one and see whether there is peer which has this slice and is not choking me.
-		 * 
-		 * 2. Check the bitfield of the fastest peer and pick the slice this peer has but I do not have it yet. 
-		 * 
-		 * 3. Download slices from the peers who is unchoking me.
-		 * 
-		 * 
-		 */
-		FileMetadata fileMetadata = this.getDownloadTask(infoHash).getFileMetadata();
-		if (fileMetadata.isAllPiecesCompleted())
-			return;
-
-		int index = connection.getIndexRequesting();
-
-		if (index == -1) {
-			BitSet selfBitfield = fileMetadata.getBitfield();
-			BitSet peerBitfield = connection.getPeer().getBitfield();
-
-			for (int i = 0; i < peerBitfield.size(); i++) {
-				if (peerBitfield.get(i) && !selfBitfield.get(i)) {
-					List<Integer> indexes = this.indexesRequesting.get(infoHash);
-					if (indexes == null) {
-						indexes = new ArrayList<Integer>();
-						this.indexesRequesting.put(infoHash, indexes);
-						indexes.add(i);
-						index = i;
-						break;
-					} else {
-						if (!indexes.contains(i)) {
-							indexes.add(i);
-							index = i;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		if (index != -1) {
-			System.out.println("Requesting slices with index : " + index + ".");
-			List<Slice> slices = fileMetadata.getNextBatchIncompletedSlices(index, REQUEST_MESSAGE_BATCH_SIZE);
-
-			if (slices.size() != 0) {
-				// It may start a download a new piece or download the remaining slices of a piece.
-				connection.setIndexRequesting(index);
-				connection.setRequestsSent(slices.size());
-				List<PeerMessage> messages = new ArrayList<PeerMessage>();
-				for (Slice slice : slices) {
-					messages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
-				}
-				System.out.println("Batch RequestMessage, messages size : " + slices.size() + ".");
-				connection.addMessageToSend(messages);
-			} else {
-				// This pieces have been completed, try to find next one to download.
-				this.indexesRequesting.get(infoHash).remove(new Integer(index)); // Be careful, new Integer(index) NOT index.
-				connection.setIndexRequesting(-1);
-				requestMoreSlices(infoHash, connection);
-			}
-		}
-	}
-
-	public void cancelRequestingPiece(String infoHash, PeerConnection connection) {
-		int indexRequesting = connection.getIndexRequesting();
-		if (indexRequesting != -1) {
-			this.indexesRequesting.get(infoHash).remove(new Integer(indexRequesting));
 		}
 	}
 }

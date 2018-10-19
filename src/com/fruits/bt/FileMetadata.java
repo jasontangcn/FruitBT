@@ -153,6 +153,10 @@ public class FileMetadata implements Serializable {
 		return (this.piecesCompleted == this.pieces.size());
 	}
 
+	public float getPercentCompleted() {
+		return this.piecesCompleted/this.pieces.size();
+	}
+	
 	public BitSet getBitfield() {
 		// TODO: VERY IMPORTANT! 
 		// BitSet do not have a fixed length/size, e.g. we have 85 pieces, but never bitfield.length or bitfield.size = 85.
@@ -168,6 +172,7 @@ public class FileMetadata implements Serializable {
 			if (pieces.get(i).isAllSlicesCompleted())
 				bitfield.set(i);
 		}
+		System.out.println("FileMetadata.getBitfield-> size : " + bitfield.size() + ", length = " + bitfield.length());
 		return bitfield;
 	}
 

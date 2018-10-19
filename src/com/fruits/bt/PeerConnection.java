@@ -61,9 +61,6 @@ public class PeerConnection {
 
 	// TODO: XXXX
 	// Batch send/receive may not work well because of unexpected communication.
-	private int indexRequesting = -1;
-	private int requestsSent;
-	private int piecesReceived;
 
 	public PeerConnection(boolean isOutgoingConnection, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
 		this.isOutgoingConnection = isOutgoingConnection;
@@ -192,7 +189,7 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.cancelRequestingPiece(self.getInfoHash(), this);
+				this.downloadManager.getPiecePicker().removeBatchRequest(self.getInfoHash(), this.getConnectionId());
 				/*
 				this.indexRequesting = -1;
 				this.requestsSent = 0;
@@ -202,7 +199,7 @@ public class PeerConnection {
 				this.choked = false;
 				System.out.println("PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
 				if (this.interesting) {
-					this.downloadManager.requestMoreSlices(this.self.getInfoHash(), this);
+					this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof InterestedMessage) {
 				this.interested = true;
@@ -233,7 +230,7 @@ public class PeerConnection {
 
 				// TODO: XXXX
 				if (!this.choked && this.interesting) {
-					this.downloadManager.requestMoreSlices(self.getInfoHash(), this);
+					this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
@@ -252,16 +249,9 @@ public class PeerConnection {
 				// TODO: XXXX
 				// Silent but the writing may fail.
 				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
-				this.piecesReceived++;
+				this.downloadManager.getPiecePicker().sliceReceived(this);
+				System.out.println("PeerConnection->readMessage: Got a PieceMessage " + message + ".");
 
-				System.out.println("PeerConnection->readMessage: Got a PieceMessage, pieceMessageReceived = " + this.piecesReceived + ", and expected count is : "
-						+ this.requestsSent + ".");
-
-				if (this.piecesReceived == this.requestsSent) {
-					this.piecesReceived = 0;
-					this.requestsSent = 0;
-					this.downloadManager.requestMoreSlices(self.getInfoHash(), this);
-				}
 			} else if (message instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage) message;
 				// TODO: Check the queue of received messages and the queue of outgoing messages, if it's there remove it from the queue.
@@ -503,12 +493,12 @@ public class PeerConnection {
 	public static boolean isInterested(BitSet a, BitSet b) {
 		System.out
 				.println("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
-		int n = Math.max(a.size(), b.size());
 		// TODO: validate parameters.
 		boolean interested = false;
-		for (int i = 0; i < n; i++) {
-			if (!a.get(i) && b.get(i)) {
+		for (int i = 0; i < b.length(); i++) {
+			if (b.get(i) && !a.get(i)) {
 				interested = true;
+				break;
 			}
 		}
 		System.out.println("a is interested in b? " + interested);
@@ -556,8 +546,7 @@ public class PeerConnection {
 				e.printStackTrace();
 			}
 		}
-		String infoHash = self.getInfoHash();
-		this.downloadManager.cancelRequestingPiece(infoHash, this);
+		this.downloadManager.getPiecePicker().removeBatchRequest(self.getInfoHash(), this.getConnectionId());
 	}
 
 	public State getState() {
@@ -628,22 +617,6 @@ public class PeerConnection {
 		return messageHandler;
 	}
 
-	public int getIndexRequesting() {
-		return indexRequesting;
-	}
-
-	public void setIndexRequesting(int indexRequesting) {
-		this.indexRequesting = indexRequesting;
-	}
-
-	public int getRequestsSent() {
-		return requestsSent;
-	}
-
-	public void setRequestsSent(int requestsSent) {
-		this.requestsSent = requestsSent;
-	}
-	
 	public SocketChannel getChannel() {
 		return this.socketChannel;
 	}
