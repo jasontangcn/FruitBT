@@ -1,7 +1,6 @@
 package com.fruits.bt;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,10 +45,7 @@ public class PiecePicker {
 	}
 
 	public void sliceReceived(PeerConnection connection) {
-		String infoHash = connection.getSelf().getInfoHash();
-		String connectionId = connection.getConnectionId();
-
-		BatchRequest request = getBatchRequestInProgress(infoHash, connectionId);
+		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHash(), connection.getConnectionId());
 		request.setReceived(request.getReceived() + 1);
 
 		if (request.isCompleted()) {
@@ -59,6 +55,10 @@ public class PiecePicker {
 
 	public void peerHaveNewPiece(String infoHash, int index) {
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
+		if (rarestFirst == null) {
+			rarestFirst = new HashMap<Integer, Integer>();
+			this.rarestFirsts.put(infoHash, rarestFirst);
+		}
 		Integer n = rarestFirst.get(Integer.valueOf(index));
 		if (n == null) {
 			rarestFirst.put(Integer.valueOf(index), Integer.valueOf(1));
@@ -78,7 +78,7 @@ public class PiecePicker {
 			this.batchRequests.put(infoHash, requests);
 		}
 
-		BitSet peerBitfield = connection.getPeer().getBitfield();
+		Bitmap peerBitfield = connection.getPeer().getBitfield();
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		if (rarestFirst == null) {
 			rarestFirst = new HashMap<Integer, Integer>();
@@ -109,13 +109,17 @@ public class PiecePicker {
 		}
 
 		String infoHash = connection.getSelf().getInfoHash();
-		BitSet peerBitfield = connection.getPeer().getBitfield();
+		Bitmap peerBitfield = connection.getPeer().getBitfield();
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		for (int i = 0; i < peerBitfield.length(); i++) {
 			if (peerBitfield.get(i)) {
+				// If the map previously contained a mapping for the key, the old value is replaced by the specified value. 
+				// (A map m is said to contain a mapping for a key k if and only if m.containsKey(k) would return true.)
 				rarestFirst.put(Integer.valueOf(i), Integer.valueOf(rarestFirst.get(Integer.valueOf(i)).intValue() - 1));
 			}
 		}
+		
+		this.removeBatchRequest(infoHash, connection.getConnectionId());
 	}
 
 	private BatchRequest getBatchRequestInProgress(String infoHash, String connectionId) {
@@ -128,6 +132,13 @@ public class PiecePicker {
 		return null;
 	}
 
+	public boolean isBatchRequestInProgress(String infoHash, String connectionId) {
+		BatchRequest request = this.getBatchRequestInProgress(infoHash, connectionId);
+		if(request == null)
+			return false;
+		return true;
+	}
+	
 	// Strategy:
 	// PercentCompleted:
 	//   < 30% Random
@@ -143,28 +154,26 @@ public class PiecePicker {
 		String infoHash = connection.getSelf().getInfoHash();
 		String connectionId = connection.getConnectionId();
 		
-		DownloadTask task = this.downloadManager.getDownloadTask(infoHash);
-		if(task.getFileMetadata().isAllPiecesCompleted())
+		FileMetadata metadata = this.downloadManager.getDownloadTask(infoHash).getFileMetadata();
+		if(metadata.isAllPiecesCompleted())
 			return;
 
 		float percentCompleted = this.downloadManager.getPercentCompleted(infoHash);
 		// Check whether I am requesting any piece.
-
 		BatchRequest request = getBatchRequestInProgress(infoHash, connectionId);
 
 		// I have not requested any piece, create a new batch request.
 		if (request == null) {
-			BitSet selfBitfield = this.downloadManager.getBitfield(infoHash);
-			BitSet peerBitfield = connection.getPeer().getBitfield();
+			Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
+			Bitmap peerBitfield = connection.getPeer().getBitfield();
 
 			List<Integer> indexes = new ArrayList<Integer>();
-
+			// Find the pieces that peer has but I do not.
 			for (int i = 0; i < peerBitfield.length(); i++) {
 				if (peerBitfield.get(i) && !selfBitfield.get(i)) {
 					indexes.add(Integer.valueOf(i));
 				}
 			}
-
 			if (indexes.isEmpty())
 				return;
 
@@ -176,15 +185,15 @@ public class PiecePicker {
 				Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 				Comparator<Map.Entry<Integer, Integer>> comparator = new Comparator<Map.Entry<Integer, Integer>>() {
 					@Override
-					public int compare(Entry<Integer, Integer> a, Entry<Integer, Integer> b) {
-						return b.getValue().intValue() - a.getValue().intValue();
+					public int compare(Entry<Integer, Integer> p, Entry<Integer, Integer> k) {
+						return p.getValue().intValue() - k.getValue().intValue();
 					}
 				};
 
-				List<Map.Entry<Integer, Integer>> sorted = new ArrayList<Map.Entry<Integer, Integer>>(rarestFirst.entrySet());
-				Collections.sort(sorted, comparator);
-				for (Map.Entry<Integer, Integer> e : sorted) {
-					Integer k = e.getKey();
+				List<Map.Entry<Integer, Integer>> entries = new ArrayList<Map.Entry<Integer, Integer>>(rarestFirst.entrySet());
+				Collections.sort(entries, comparator);
+				for (Map.Entry<Integer, Integer> entry : entries) {
+					Integer k = entry.getKey();
 					if (indexes.contains(k)) {
 						index = k.intValue();
 						break;
@@ -200,17 +209,20 @@ public class PiecePicker {
 			request.setIndex(index);
 			this.batchRequests.get(infoHash).add(request);
 		}
-
+		
+		
 		// Now 
 		// request is a new index 
 		// or a request(from unchoking message) that has completed a batch(received piece)
-		// or received have message.
-		List<Slice> slices = task.getFileMetadata().getNextBatchIncompletedSlices(request.getIndex(), PiecePicker.BATCH_REQUEST_SIZE);
+		// or received have message.		
+		List<Slice> slices = metadata.getNextBatchIncompletedSlices(request.getIndex(), PiecePicker.BATCH_REQUEST_SIZE);
 		
 		if(slices.size() != 0) {
 			if(percentCompleted > 0.9) {
 				// TODO: Implement the 'End Game' mode.
 			}
+			// If it's a new request, set the fields.
+			// If one batch is completed, reset the fields.
 			request.setReceived(0);
 			request.setRequested(slices.size());
 			List<PeerMessage> messages = new ArrayList<PeerMessage>();

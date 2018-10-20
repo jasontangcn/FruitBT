@@ -8,7 +8,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -221,7 +220,7 @@ public class DownloadManager {
 		System.out.println("Latest downloadTasks : " + this.downloadTasks + ".");
 	}
 
-	public BitSet getBitfield(String infoHash) {
+	public Bitmap getBitfield(String infoHash) {
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
 		if (downloadTask != null)
 			return downloadTask.getFileMetadata().getBitfield();

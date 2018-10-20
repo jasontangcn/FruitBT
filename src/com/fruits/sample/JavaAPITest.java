@@ -139,11 +139,14 @@ public class JavaAPITest {
 		  System.out.println(randNum);
 		}
 		*/
-		
+		/*
 		List<Integer> rarestFirst = new ArrayList<Integer>();
 		rarestFirst.set(3, Integer.valueOf(3));
 		rarestFirst.set(6, Integer.valueOf(2));
 		System.out.println(rarestFirst);
+		*/
+		byte[] bytes = new byte[2];
+    int a = bytes[1] & (byte)1;
 	}
 
 	public static class Rate {

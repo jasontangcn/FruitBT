@@ -8,7 +8,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -83,11 +82,11 @@ public class PeerConnectionManager implements Runnable {
 						conn.getMessageHandler().calculateReadWriteRate();
 					}
 					connections.sort(new Comparator<PeerConnection>() {
-						public int compare(PeerConnection a, PeerConnection b) {
-							if (a.isChoked() == b.isChoked()) {
-								return Float.compare(b.getMessageHandler().getReadRate(), a.getMessageHandler().getReadRate());
+						public int compare(PeerConnection p, PeerConnection k) {
+							if (p.isChoked() == k.isChoked()) {
+								return Float.compare(k.getMessageHandler().getReadRate(), p.getMessageHandler().getReadRate());
 							} else {
-								if (a.isChoked()) {
+								if (p.isChoked()) {
 									return -1;
 								} else {
 									return 1;
@@ -381,11 +380,11 @@ public class PeerConnectionManager implements Runnable {
 	}
 	
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) {
-		BitSet selfBitfield = this.downloadManager.getBitfield(infoHash);
+		Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
 
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		for (PeerConnection conn : connections) {
-			BitSet peerBitfield = conn.getPeer().getBitfield();
+			Bitmap peerBitfield = conn.getPeer().getBitfield();
 			boolean interestingNew = PeerConnection.isInterested(selfBitfield, peerBitfield);
 			if (conn.isInteresting() && !interestingNew) {
 				PeerMessage.NotInterestedMessage notInterestedMessage = new PeerMessage.NotInterestedMessage();
@@ -403,7 +402,7 @@ public class PeerConnectionManager implements Runnable {
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		for (PeerConnection conn : connections) {
 			if (!conn.isChoked()) {
-				BitSet bitfield = conn.getPeer().getBitfield();
+				Bitmap bitfield = conn.getPeer().getBitfield();
 				if (bitfield.get(slice.getIndex()))
 					return conn;
 			}

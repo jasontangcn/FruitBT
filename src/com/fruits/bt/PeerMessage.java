@@ -2,7 +2,6 @@ package com.fruits.bt;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.BitSet;
 
 public abstract class PeerMessage {
 	//  message type id
@@ -287,23 +286,23 @@ public abstract class PeerMessage {
 	public static class BitfieldMessage extends PeerMessage {
 		public static final int BASE_SIZE = 1;
 
-		private BitSet bitfield;
+		private Bitmap bitfield;
 
-		public BitfieldMessage(BitSet bitfield) {
+		public BitfieldMessage(Bitmap bitfield) {
 			super(PeerMessage.BITFIELD_MESSAGE_ID);
 			this.bitfield = bitfield;
 		}
 
-		public BitfieldMessage(ByteBuffer messageBytes, BitSet bitfield) {
+		public BitfieldMessage(ByteBuffer messageBytes, Bitmap bitfield) {
 			super(PeerMessage.BITFIELD_MESSAGE_ID, messageBytes);
 			this.bitfield = bitfield;
 		}
 
-		public BitSet getBitfield() {
+		public Bitmap getBitfield() {
 			return bitfield;
 		}
 
-		public void setBitfield(BitSet bitfield) {
+		public void setBitfield(Bitmap bitfield) {
 			this.bitfield = bitfield;
 		}
 
@@ -323,7 +322,7 @@ public abstract class PeerMessage {
 
 		public static BitfieldMessage decode(ByteBuffer messageBytes) {
 			//TODO: Design the bitfiled
-			return new BitfieldMessage(messageBytes, BitSet.valueOf(messageBytes.slice()));
+			return new BitfieldMessage(messageBytes, Bitmap.valueOf(messageBytes.slice()));
 		}
 	}
 

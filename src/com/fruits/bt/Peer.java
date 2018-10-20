@@ -1,14 +1,13 @@
 package com.fruits.bt;
 
 import java.net.InetSocketAddress;
-import java.util.BitSet;
 
 public class Peer {
 	private InetSocketAddress address;
 
 	private String peerId; // same with the peerId passed to Tracker
 	private String infoHash;
-	private BitSet bitfield; // self should not use this field, it should be null.
+	private Bitmap bitfield; // self should not use this field, it should be null.
 
 	public Peer() {
 	}
@@ -37,11 +36,11 @@ public class Peer {
 		this.infoHash = infoHash;
 	}
 
-	public BitSet getBitfield() {
+	public Bitmap getBitfield() {
 		return bitfield;
 	}
 
-	public void setBitfield(BitSet bitfield) {
+	public void setBitfield(Bitmap bitfield) {
 		this.bitfield = bitfield;
 	}
 

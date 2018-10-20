@@ -5,7 +5,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -102,11 +101,11 @@ public class PeerConnection {
 			if (message == null)
 				return;
 			if (message instanceof PeerMessage.BitfieldMessage) {
-				BitSet peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
+				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
 				// TODO: Set the bitfield of this.peer.
 				this.peer.setBitfield(peerBitfield);
 
-				BitSet selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
+				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
 				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.IN_BITFIELD_RECEIVED;
@@ -147,7 +146,7 @@ public class PeerConnection {
 				return;
 			if (message instanceof PeerMessage.BitfieldMessage) {
 				// TODO: Set the bitfield of this.peer.
-				BitSet peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
+				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
 				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
@@ -189,7 +188,7 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.getPiecePicker().removeBatchRequest(self.getInfoHash(), this.getConnectionId());
+				this.downloadManager.getPiecePicker().removeConnection(this);
 				/*
 				this.indexRequesting = -1;
 				this.requestsSent = 0;
@@ -197,6 +196,7 @@ public class PeerConnection {
 				*/
 			} else if (message instanceof UnchokeMessage) {
 				this.choked = false;
+				this.downloadManager.getPiecePicker().addConnection(this);
 				System.out.println("PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
 				if (this.interesting) {
 					this.downloadManager.getPiecePicker().requestMoreSlices(this);
@@ -228,9 +228,11 @@ public class PeerConnection {
 					}
 				}
 
+				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHash(), ((HaveMessage) message).getPieceIndex());
 				// TODO: XXXX
 				if (!this.choked && this.interesting) {
-					this.downloadManager.getPiecePicker().requestMoreSlices(this);
+					if(!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHash(), connectionId))
+					  this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
@@ -308,7 +310,7 @@ public class PeerConnection {
 
 		if (this.state == State.IN_BITFIELD_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
-				BitSet bitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHash());
 				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
 				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -380,7 +382,7 @@ public class PeerConnection {
 
 		if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
-				BitSet bitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHash());
 				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
 				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -490,13 +492,13 @@ public class PeerConnection {
 		}
 	}
 
-	public static boolean isInterested(BitSet a, BitSet b) {
+	public static boolean isInterested(Bitmap p, Bitmap k) {
 		System.out
-				.println("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
+				.println("p-> " + p + " [length = " + p.length() + ", size = " + p.size() + "], p-> " + k + " [length = " + k.length() + ", size = " + k.size() + "].");
 		// TODO: validate parameters.
 		boolean interested = false;
-		for (int i = 0; i < b.length(); i++) {
-			if (b.get(i) && !a.get(i)) {
+		for (int i = 0; i < k.size(); i++) {
+			if (k.get(i) && !p.get(i)) {
 				interested = true;
 				break;
 			}
@@ -546,7 +548,8 @@ public class PeerConnection {
 				e.printStackTrace();
 			}
 		}
-		this.downloadManager.getPiecePicker().removeBatchRequest(self.getInfoHash(), this.getConnectionId());
+
+		this.downloadManager.getPiecePicker().removeConnection(this);
 	}
 
 	public State getState() {

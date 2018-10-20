@@ -6,11 +6,9 @@ import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
 
 // TODO: Some days ago, if I open/write RandomAccessFile frequently, always got a exception.
@@ -157,7 +155,7 @@ public class FileMetadata implements Serializable {
 		return this.piecesCompleted/this.pieces.size();
 	}
 	
-	public BitSet getBitfield() {
+	public Bitmap getBitfield() {
 		// TODO: VERY IMPORTANT! 
 		// BitSet do not have a fixed length/size, e.g. we have 85 pieces, but never bitfield.length or bitfield.size = 85.
 		// BitSet
@@ -167,7 +165,7 @@ public class FileMetadata implements Serializable {
 		// toByteArray -> Returns a new byte array containing all the bits in this bit set.
 		// Interanlly BitSet use long[] as backend, so BitSet(nBits) -> new long[wordIndex(nbits-1) + 1].
 		// So usually we should use length(), not size().
-		BitSet bitfield = new BitSet(pieces.size());
+		Bitmap bitfield = new Bitmap(pieces.size());
 		for (int i = 0; i < pieces.size(); i++) {
 			if (pieces.get(i).isAllSlicesCompleted())
 				bitfield.set(i);
