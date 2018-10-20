@@ -27,6 +27,9 @@ public class FileMetadata implements Serializable {
 	private int piecesCompleted;
 
 	private transient FileChannel fileChannel;
+	
+	private long bytesWritten;
+	private long bytesRead;
 
 	// TODO: Need a Externalizable?
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
@@ -144,6 +147,7 @@ public class FileMetadata implements Serializable {
 			piecesCompleted++;
 		}
 		
+		this.bytesWritten += length;
 		return isPieceCompleted;
 	}
 	
@@ -169,6 +173,8 @@ public class FileMetadata implements Serializable {
 			// If read fails, return null.
 			return null;
 		}
+		
+		this.bytesRead += slice.getLength();
 		return buffer;
 	}
 
@@ -227,6 +233,14 @@ public class FileMetadata implements Serializable {
 		return seed;
 	}
 
+	public long getBytesWritten() {
+		return this.bytesWritten;
+	}
+	
+	public long getBytesRead() {
+		return this.bytesRead;
+	}
+	
 	@Override
 	public String toString() {
 		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n" + "pieces = " + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
