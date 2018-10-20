@@ -45,6 +45,7 @@ public class PiecePicker {
 	}
 
 	public void sliceReceived(PeerConnection connection) {
+		System.out.println("PiecePicker: sliceReceived is called.");
 		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHash(), connection.getConnectionId());
 		request.setReceived(request.getReceived() + 1);
 
@@ -54,6 +55,8 @@ public class PiecePicker {
 	}
 
 	public void peerHaveNewPiece(String infoHash, int index) {
+		System.out.println("PiecePicker: peerHaveNewPiece -> infoHash : " + infoHash + ", index = " + index + ".");
+		
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		if (rarestFirst == null) {
 			rarestFirst = new HashMap<Integer, Integer>();
@@ -69,6 +72,7 @@ public class PiecePicker {
 
 	// Add connection that is unchoked.
 	public void addConnection(PeerConnection connection) {
+		System.out.println("PiecePicker: add a new connection : " + connection.getConnectionId() + ".");
 		this.connections.add(connection);
 
 		String infoHash = connection.getSelf().getInfoHash();
@@ -98,6 +102,7 @@ public class PiecePicker {
 
 	// Remove connection that is choked or closed.
 	public void removeConnection(PeerConnection connection) {
+		System.out.println("PiecePicker: removed a connection : " + connection.getConnectionId() + ".");
 		// TODO: Override the equals of PeerConnection then use API List.remove to remove the connection.
 		Iterator<PeerConnection> iterator = this.connections.iterator();
 		while (iterator.hasNext()) {
@@ -151,13 +156,13 @@ public class PiecePicker {
 	// 3. Received PieceMessage and previous batch is completed
 	// 4. 
 	public void requestMoreSlices(PeerConnection connection) {
+		System.out.println("PiecePicker: start to work.");
 		String infoHash = connection.getSelf().getInfoHash();
 		String connectionId = connection.getConnectionId();
 		
 		FileMetadata metadata = this.downloadManager.getDownloadTask(infoHash).getFileMetadata();
 		if(metadata.isAllPiecesCompleted())
 			return;
-
 		float percentCompleted = this.downloadManager.getPercentCompleted(infoHash);
 		// Check whether I am requesting any piece.
 		BatchRequest request = getBatchRequestInProgress(infoHash, connectionId);
@@ -203,6 +208,7 @@ public class PiecePicker {
 				index = indexes.get(0);
 			}
 			
+			System.out.println("PiecePicker: picked a new piece to request, index = " + index + ".");
 			// Finally find a index to request.
 			request = new BatchRequest();
 			request.setConnectionId(connectionId);
@@ -210,6 +216,7 @@ public class PiecePicker {
 			this.batchRequests.get(infoHash).add(request);
 		}
 		
+		System.out.println("PiecePicker: next index to request -> " + request.getIndex() + ".");
 		
 		// Now 
 		// request is a new index 
@@ -229,11 +236,12 @@ public class PiecePicker {
 			for (Slice slice : slices) {
 				messages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 			}
-			System.out.println("Batch RequestMessage, messages size : " + slices.size() + ".");
+			System.out.println("Batch RequestMessage size : " + slices.size() + ".");
 			connection.addMessageToSend(messages);
 		}else {
 			// This pieces have been completed, try to find next one to download.
 			this.removeBatchRequest(infoHash, connectionId);
+			System.out.println("One batch requet is done, proceed to request more.");
 			requestMoreSlices(connection);
 		}
 	}

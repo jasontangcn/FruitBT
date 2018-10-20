@@ -80,13 +80,14 @@ public class Client {
 		connectionManager.start(new Thread.UncaughtExceptionHandler(){
 	    public void uncaughtException(Thread thead, Throwable exception) {
 	    	System.out.println("PeerConnectionManager failed, we are going to fail the whole system.");
+	    	exception.printStackTrace();
 	    	System.exit(0);
 	    }
 		}); // connectionManager is run in a new thread.
 
 		//downloadManager.addDownloadTask("doc\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.addDownloadTask("D:\\TorrentDownload2\\Wireshark-win32-1.10.0.exe.torrent");
-		//downloadManager.startDownloadFile("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
+		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
 	}
 	
 	public void stop() {

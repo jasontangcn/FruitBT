@@ -201,7 +201,7 @@ public class FileMetadata implements Serializable {
 	// In production, we should not open then close a file for writing/reading a slice.
 	// The file should be always open for random access.
 	public ByteBuffer readSlice(Slice slice) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is reading slice.");
+		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
 
 		openFile();
 

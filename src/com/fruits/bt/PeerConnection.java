@@ -102,10 +102,15 @@ public class PeerConnection {
 				return;
 			if (message instanceof PeerMessage.BitfieldMessage) {
 				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
+
 				// TODO: Set the bitfield of this.peer.
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
+				
+				// TODO: need to validate it before assigning the length?
+				peerBitfield.setLength(selfBitfield.length());
+				
 				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.IN_BITFIELD_RECEIVED;
@@ -149,7 +154,10 @@ public class PeerConnection {
 				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
-				this.interesting = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), peerBitfield);
+				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				peerBitfield.setLength(selfBitfield.length());
+				
+				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 				
@@ -527,7 +535,7 @@ public class PeerConnection {
 		this.close();
 		
 		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
-			this.connectionManager.removePeerConnection(this.self.getPeerId(), this.connectionId);
+			this.connectionManager.removePeerConnection(this.self.getInfoHash(), this.connectionId);
 		}
 	}
 	
