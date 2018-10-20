@@ -32,7 +32,7 @@ public class FileMetadata implements Serializable {
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
 	public FileMetadata(TorrentSeed seed) throws IOException {
 		this.seed = seed;
-		this.filePath = Client.DOWNLOAD_TEMP_DIR + File.separator + seed.getName();
+		this.filePath = Client.DOWNLOAD_DIR + File.separator + seed.getName();
 
 		File file = new File(this.filePath);
 		if (!file.exists()) {
@@ -146,6 +146,31 @@ public class FileMetadata implements Serializable {
 		
 		return isPieceCompleted;
 	}
+	
+	// In production, we should not open then close a file for writing/reading a slice.
+	// The file should be always open for random access.
+	public ByteBuffer readSlice(Slice slice) throws IOException {
+		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
+
+		openFile();
+
+		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
+		//byte[] buffer = new byte[slice.getLength()];
+		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());
+		try {
+			// TODO: Test code
+			//RandomAccessFile tempFile = new RandomAccessFile("D:\\TorrentDownload\\Wireshark-win32-1.10.0.exe.X", "rw");
+			//tempFile.seek(startPos);
+			//tempFile.read(buffer);
+			//tempFile.close();
+			this.fileChannel.read(buffer, startPos);
+		} catch (IOException e) {
+			e.printStackTrace();
+			// If read fails, return null.
+			return null;
+		}
+		return buffer;
+	}
 
 	public boolean isAllPiecesCompleted() {
 		return (this.piecesCompleted == this.pieces.size());
@@ -196,31 +221,6 @@ public class FileMetadata implements Serializable {
 			}
 		}
 		return incompleteds;
-	}
-
-	// In production, we should not open then close a file for writing/reading a slice.
-	// The file should be always open for random access.
-	public ByteBuffer readSlice(Slice slice) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
-
-		openFile();
-
-		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
-		//byte[] buffer = new byte[slice.getLength()];
-		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());
-		try {
-			// TODO: Test code
-			//RandomAccessFile tempFile = new RandomAccessFile("D:\\TorrentDownload\\Wireshark-win32-1.10.0.exe.X", "rw");
-			//tempFile.seek(startPos);
-			//tempFile.read(buffer);
-			//tempFile.close();
-			this.fileChannel.read(buffer, startPos);
-		} catch (IOException e) {
-			e.printStackTrace();
-			// If read fails, return null.
-			return null;
-		}
-		return buffer;
 	}
 
 	public TorrentSeed getSeed() {

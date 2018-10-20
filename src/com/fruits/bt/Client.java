@@ -6,26 +6,25 @@ import java.net.InetSocketAddress;
 import java.util.Properties;
 
 public class Client {
-	public static String DOWNLOAD_TASKS_TEMP_FILE; // = "D:\\TorrentDownload\\downloadTasks.tmp";
-	public static String DOWNLOAD_TEMP_DIR; // = "D:\\TorrentDownload";
-
-	public static String LISTENER_DOMAIN; // = "127.0.0.1";
-	public static int LISTENER_PORT; // = 8888;
+	public static String DOWNLOAD_DIR; // "D:\\TorrentDownload";
+	public static String DOWNLOAD_TASKS_FILE; // "D:\\TorrentDownload\\downloadTasks.tmp"
 
 	public static String PEER_ID;
-
-	public static String REMOTE_DOMAIN; // = "127.0.0.1";
-	public static int REMOTE_PORT; // = 8888;
+	public static String LISTENER_DOMAIN; // "127.0.0.1"
+	public static int LISTENER_PORT; // 8888
 
 	public static String REMOTE_PEER_ID;
+	public static String REMOTE_DOMAIN; // "127.0.0.1"
+	public static int REMOTE_PORT; // 6666
 
 	private PeerConnectionManager connectionManager;
 	private DownloadManager downloadManager;
 
 	static {
 		Properties props = System.getProperties();
-		DOWNLOAD_TASKS_TEMP_FILE = props.getProperty("download.tasks.tmp.file");
-		DOWNLOAD_TEMP_DIR = props.getProperty("download.tmp.dir");
+		DOWNLOAD_DIR = props.getProperty("download.dir");
+		DOWNLOAD_TASKS_FILE = props.getProperty("download.tasks.file");
+
 
 		LISTENER_DOMAIN = props.getProperty("listener.domain");
 		LISTENER_PORT = Integer.parseInt(props.getProperty("listener.port"));
@@ -35,8 +34,8 @@ public class Client {
 		REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
 		REMOTE_PEER_ID = props.getProperty("remote.peer.id");
 
-		System.out.println(DOWNLOAD_TASKS_TEMP_FILE + "," + DOWNLOAD_TEMP_DIR + "," + LISTENER_DOMAIN + "," + LISTENER_PORT + "," + PEER_ID + "," + REMOTE_DOMAIN
-				+ "," + REMOTE_PORT + "," + REMOTE_PEER_ID);
+		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + PEER_ID + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", " + REMOTE_PEER_ID
+				+ ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT);
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -45,11 +44,11 @@ public class Client {
 		
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				System.out.println("System is shuting down.");
+				System.out.println("System is shutting down.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
 				client.stop();
-				System.out.println("Shuting down system spent " + (System.currentTimeMillis() - begin)  + " ms.");
+				System.out.println("Shutting down system spent " + (System.currentTimeMillis() - begin)  + " ms.");
 			}
 		});
 	}
@@ -68,9 +67,9 @@ public class Client {
 		//        Most import messages: bitfield, request, have
 		// TODO: Its better to bind the socket with a IP instead of a domain.
 
-		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
-		if (!tasksFile.exists()) {
-			tasksFile.createNewFile();
+		File taskFile = new File(Client.DOWNLOAD_TASKS_FILE);
+		if (!taskFile.exists()) {
+			taskFile.createNewFile();
 		}
 
 		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT));
@@ -79,7 +78,7 @@ public class Client {
 
 		connectionManager.start(new Thread.UncaughtExceptionHandler(){
 	    public void uncaughtException(Thread thead, Throwable exception) {
-	    	System.out.println("PeerConnectionManager failed, we are going to fail the whole system.");
+	    	System.out.println("PeerConnectionManager failed, we are going to fail the system.");
 	    	exception.printStackTrace();
 	    	System.exit(0);
 	    }

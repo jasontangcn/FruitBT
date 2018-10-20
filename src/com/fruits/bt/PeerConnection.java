@@ -111,7 +111,7 @@ public class PeerConnection {
 				// TODO: need to validate it before assigning the length?
 				peerBitfield.setLength(selfBitfield.length());
 				
-				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
+				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.IN_BITFIELD_RECEIVED;
 				System.out.println("Status : " + this.state + ", received bitfield message [" + message + "].");
@@ -157,7 +157,7 @@ public class PeerConnection {
 				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHash());
 				peerBitfield.setLength(selfBitfield.length());
 				
-				this.interesting = PeerConnection.isInterested(selfBitfield, peerBitfield);
+				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 				
@@ -211,40 +211,43 @@ public class PeerConnection {
 				}
 			} else if (message instanceof InterestedMessage) {
 				this.interested = true;
-				// TODO: If peer is interested in me, I will unchoke him?
+				// TODO: If a peer is interested in me, I will unchoke him?
 			} else if (message instanceof NotInterestedMessage) {
 				this.interested = false;
-				// TODO: Cancel the response from the peer.
-
-				Iterator<PeerMessage> it = this.messagesToSend.iterator();
-				while (it.hasNext()) {
-					PeerMessage msg = it.next();
-					if (msg instanceof PieceMessage) {
-						it.remove();
+				// TODO: Cancel the responses for the peer.
+				Iterator<PeerMessage> iterator = this.messagesToSend.iterator();
+				while (iterator.hasNext()) {
+					PeerMessage m = iterator.next();
+					if (m instanceof PieceMessage) {
+						iterator.remove();
 					}
 				}
 			} else if (message instanceof HaveMessage) {
 				HaveMessage haveMessage = (HaveMessage) message;
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
 
+				boolean interestedNow = false;
 				if (!this.interesting) {
-					boolean interested = PeerConnection.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), this.peer.getBitfield());
+					boolean interested = Helper.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), this.peer.getBitfield());
 					this.interesting = interested;
 					if (interested) {
+						interestedNow = true;
 						PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
 						this.addMessageToSend(interestedMessage);
 					}
 				}
 
-				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHash(), ((HaveMessage) message).getPieceIndex());
+				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHash(), haveMessage.getPieceIndex());
 				// TODO: XXXX
-				if (!this.choked && this.interesting) {
+				if (!this.choked && interestedNow) {
 					if(!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHash(), connectionId))
 					  this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
 			} else if (message instanceof RequestMessage) {
+				System.out.println("PeerConnection->readMessage: Got a RequestMessage " + message + ".");
+				
 				RequestMessage request = (RequestMessage) message;
 				Slice slice = new Slice(request.getIndex(), request.getBegin(), request.getLength());
 				// TODO: data may null if failed to read slice.
@@ -265,13 +268,13 @@ public class PeerConnection {
 			} else if (message instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage) message;
 				// TODO: Check the queue of received messages and the queue of outgoing messages, if it's there remove it from the queue.
-				Iterator<PeerMessage> it = this.messagesToSend.iterator();
-				while (it.hasNext()) {
-					PeerMessage msg = it.next();
-					if (message instanceof PieceMessage) {
-						PieceMessage pieceMessage = (PieceMessage) message;
+				Iterator<PeerMessage> iterator = this.messagesToSend.iterator();
+				while (iterator.hasNext()) {
+					PeerMessage m = iterator.next();
+					if (m instanceof PieceMessage) {
+						PieceMessage pieceMessage = (PieceMessage) m;
 						if ((pieceMessage.getIndex() == cancelMessage.getIndex()) && (pieceMessage.getBegin() == cancelMessage.getBegin())) {
-							it.remove();
+							iterator.remove();
 						}
 					}
 				}
@@ -467,13 +470,12 @@ public class PeerConnection {
 	}
 
 	public void addMessageToSend(PeerMessage message) {
-		// TODO: Handling exception.
+		// TODO: Handling exceptions.
 		try {
 			this.messagesToSend.put(message);
 		} catch (InterruptedException e) {
 			System.out.println("Status : " + this.state + ", failed to add outgoing message to queue : " + message + ".");
 			e.printStackTrace();
-			return;
 		}
 		System.out.println("Status : " + this.state + ", an outgoing message was added to queue : " + message + ".");
 
@@ -483,7 +485,7 @@ public class PeerConnection {
 	}
 
 	public void addMessageToSend(List<PeerMessage> messages) {
-		// TODO: Handling exception.
+		// TODO: Handling exceptions.
 		try {
 			for (PeerMessage message : messages) {
 				this.messagesToSend.put(message);
@@ -491,28 +493,12 @@ public class PeerConnection {
 		} catch (InterruptedException e) {
 			System.out.println("Status : " + this.state + ", failed to add outgoing messages to queue : " + messages + ".");
 			e.printStackTrace();
-			return;
 		}
 		System.out.println("Status : " + this.state + ", outgoing messages were added to queue : " + messages + ".");
 
 		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
 			this.startSendMessages();
 		}
-	}
-
-	public static boolean isInterested(Bitmap p, Bitmap k) {
-		System.out
-				.println("p-> " + p + " [length = " + p.length() + ", size = " + p.size() + "], p-> " + k + " [length = " + k.length() + ", size = " + k.size() + "].");
-		// TODO: validate parameters.
-		boolean interested = false;
-		for (int i = 0; i < k.size(); i++) {
-			if (k.get(i) && !p.get(i)) {
-				interested = true;
-				break;
-			}
-		}
-		System.out.println("a is interested in b? " + interested);
-		return interested;
 	}
 
 	public void checkAliveAndKeepAlive() {
@@ -549,14 +535,8 @@ public class PeerConnection {
 		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
 		System.out.println("Closing PeerConnection : " + this);
 		this.connectionManager.unregister(this.socketChannel);
-		if (socketChannel.isOpen()) {
-			try {
-				socketChannel.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
+		
+		Helper.closeChannel(socketChannel);
 		this.downloadManager.getPiecePicker().removeConnection(this);
 	}
 

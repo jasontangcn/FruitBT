@@ -48,6 +48,7 @@ import com.fruits.bt.PeerMessage.UnchokeMessage;
  * 
  */
 public class PeerConnectionManager implements Runnable {
+	private volatile boolean stopped = false;
 	private Thread connectionManagerThread = null;
 
 	private InetSocketAddress listenEndpoint;
@@ -115,7 +116,7 @@ public class PeerConnectionManager implements Runnable {
 						PeerConnection conn = connections.get(i);
 						if (i < 5) {
 							if (conn.isChoking()) {
-								System.out.println("Choker-> I am going to unchoke connecton " + conn + ".");
+								System.out.println("Choker-> I am going to unchoke connection " + conn + ".");
 								conn.setChoking(false);
 								UnchokeMessage unchokeMessage = new UnchokeMessage();
 								conn.addMessageToSend(unchokeMessage);
@@ -226,7 +227,7 @@ public class PeerConnectionManager implements Runnable {
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
-							this.closeChannel(socketChannel);
+							Helper.closeChannel(socketChannel);
 							// This channel may be closed, just cancel the key because this connection is not yet managed by PeerConnectionManager.
 							key.cancel();
 						}
@@ -241,16 +242,6 @@ public class PeerConnectionManager implements Runnable {
 			
 			throw new RuntimeException(e); // How to propagate this exception from child thread to parent thread?
 		}
-
-	}
-
-	public void closeChannel(SocketChannel channel) {
-		try {
-		  if(channel != null && channel.isOpen())
-		  	channel.close();
-		  }catch(IOException ioe) {
-			  ioe.printStackTrace();
-		  }
 	}
 	
 	public PeerConnection createOutgoingConnection(Peer self, Peer peer) {
@@ -260,9 +251,9 @@ public class PeerConnectionManager implements Runnable {
 			socketChannel.configureBlocking(false);
 			socketChannel.socket().setReuseAddress(true); // SocketException
 			// socketChannel.bind(new InetSocketAddress("127.0.0.1", 6666));
-			// TODO: Random binding to local address?
+			// TODO: Randomly bind to local address.
 			socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
-			System.out.println("Connection to " + peer.getAddress() + ".");
+			System.out.println("Connecting to peer: " + peer.getAddress() + ".");
 			PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager);
 	
 			self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
@@ -275,49 +266,40 @@ public class PeerConnectionManager implements Runnable {
 			
 			return conn;
 		}catch(IOException e) {
-			System.out.println("Failed to create connection -> self : " + self + ", peer : " + peer);
+			System.out.println("Failed to create connection -> self : " + self + ", peer : " + peer + ".");
 			e.printStackTrace();
 			
-			this.closeChannel(socketChannel);
+			Helper.closeChannel(socketChannel);
 			return null;
 		}
 	}
 
 	public void stop() {
+		System.out.println("PeerConnectionManager is stopping.");
+		
+		if(this.stopped)
+			return;
+		this.stopped = true;
+		
 		this.choker.shutdown();
-
 		this.aliveManager.shutdown();
-
 		this.connectionManagerThread.interrupt();
 
-		try {
-			if (this.serverChannel != null && this.serverChannel.isOpen()) {
-				this.serverChannel.close(); // IOException
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		try {
-			if (this.selector != null && this.selector.isOpen()) {
-				this.selector.close(); // IOException
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		Helper.closeServerChannel(this.serverChannel);
+		Helper.closeSelector(this.selector);
 	}
 
 	// For outgoing connection: the connection may not finish connection yet.
 	// For incoming connection: the connection at least has been accepted.
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		System.out.println("New PeerConnection is created, is it outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", ["
+		System.out.println("New connection is created, outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", ["
 				+ connection + "]");
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
 			connections = new ArrayList<PeerConnection>();
+			this.peerConnections.put(infoHash, connections);
 		}
 		connections.add(connection);
-		this.peerConnections.put(infoHash, connections);
 	}
 
 	public List<PeerConnection> getPeerConnections(String infoHash) {
@@ -353,7 +335,7 @@ public class PeerConnectionManager implements Runnable {
 			selectorLock.lock();
 			System.out.println("Wakening the selector.");
 			selector.wakeup();
-			System.out.println("Registering channel : " + socketChannel + ", OPS = " + interestOps(ops) + ", attachment = " + attachment + ".");
+			System.out.println("Registering channel : " + socketChannel + ", ops = " + interestOps(ops) + ", attachment = " + attachment + ".");
 			return socketChannel.register(selector, ops, attachment); // lots of exception may be thrown.
 		} finally {
 			selectorLock.unlock();
@@ -369,10 +351,9 @@ public class PeerConnectionManager implements Runnable {
 		} else if (ops == (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) {
 			return "OP_READ | OP_WRITE";
 		}
-		return "Unexpected : " + ops + ".";
+		return "Unexpected : " + ops;
 	}
 
-	
 	public void unregister(SocketChannel socketChannel) {
 		if(socketChannel.isRegistered()) // it may be registered in multiple selectors.
 		  socketChannel.keyFor(this.selector).cancel();
@@ -385,28 +366,13 @@ public class PeerConnectionManager implements Runnable {
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		for (PeerConnection conn : connections) {
 			Bitmap peerBitfield = conn.getPeer().getBitfield();
-			boolean interestingNew = PeerConnection.isInterested(selfBitfield, peerBitfield);
-			if (conn.isInteresting() && !interestingNew) {
+			boolean interestingNew = Helper.isInterested(selfBitfield, peerBitfield);
+			if (conn.isInteresting() && !interestingNew) { // I have a new piece, so I am not interested in the peer.
 				PeerMessage.NotInterestedMessage notInterestedMessage = new PeerMessage.NotInterestedMessage();
 				conn.addMessageToSend(notInterestedMessage);
 			}
 			conn.setInteresting(interestingNew);
-
-			if (!conn.isInterested())
-				break;
 			conn.addMessageToSend(new HaveMessage(pieceIndex));
 		}
-	}
-
-	public PeerConnection canIDownloadSlice(String infoHash, Slice slice) {
-		List<PeerConnection> connections = this.peerConnections.get(infoHash);
-		for (PeerConnection conn : connections) {
-			if (!conn.isChoked()) {
-				Bitmap bitfield = conn.getPeer().getBitfield();
-				if (bitfield.get(slice.getIndex()))
-					return conn;
-			}
-		}
-		return null;
 	}
 }

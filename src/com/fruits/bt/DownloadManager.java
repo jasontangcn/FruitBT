@@ -22,9 +22,6 @@ import com.fruits.bt.DownloadTask.DownloadState;
  *    Create a download task and initialize the metadata(initialize internal data structure, e.g. pieces&slices, create temp file).
  *    Get peers from tracker server and create connections with peers.
  * 3. If I am unchoked by peers, start to request slices.
- *    
- * 
- * 
  */
 
 public class DownloadManager {
@@ -65,14 +62,14 @@ public class DownloadManager {
 	private void loadDownloadTasks() throws IOException { // If it fails, fail the system.
 		// FileOutputStream: If the specified file does not exits, create a new one.
 		// FileInputStream: If the specified file does not exits, throws exception.
-		File tasksFile = new File(Client.DOWNLOAD_TASKS_TEMP_FILE);
+		File taskFile = new File(Client.DOWNLOAD_TASKS_FILE);
 		// TODO: File.length() to check whether the file is empty or not, is it enough?
-		if (tasksFile.length() > 0) {
+		if (taskFile.length() > 0) {
 			// Load metadata for the files downloading/downloaded yet.
 			ObjectInputStream ois = null;
 			Object obj = null;
 			try {
-				ois = new ObjectInputStream(new FileInputStream(tasksFile));
+				ois = new ObjectInputStream(new FileInputStream(taskFile));
 				obj = ois.readObject();
 			} catch (ClassNotFoundException e) {
 				throw new IOException(e);
@@ -85,12 +82,12 @@ public class DownloadManager {
 				}
 			}
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
-			System.out.println("Loaded download tasks from disk : " + this.downloadTasks + ".");
+			System.out.println("Loaded tasks from disk : " + this.downloadTasks + ".");
 		} else {
 			this.downloadTasks = new HashMap<String, DownloadTask>();
 			ObjectOutputStream oos = null;
 			try {
-				oos = new ObjectOutputStream(new FileOutputStream(tasksFile));
+				oos = new ObjectOutputStream(new FileOutputStream(taskFile));
 				oos.writeObject(this.downloadTasks);
 			} finally {
 				try {
@@ -100,13 +97,14 @@ public class DownloadManager {
 					e.printStackTrace();
 				}
 			}
-			System.out.println("Created a new downloadTasks.");
+			System.out.println("Created a new task.");
 		}
 	}
 
 	public PiecePicker getPiecePicker() {
 		return this.piecePicker;
 	}
+	
 	public void finalize() {
 		for (DownloadTask task : this.downloadTasks.values()) {
 			task.getFileMetadata().finalize();
@@ -124,7 +122,7 @@ public class DownloadManager {
 		task.setState(DownloadTask.DownloadState.PENDING);
 
 		this.downloadTasks.put(seed.getInfoHash(), task);
-		System.out.println("New download task was added, downloadTasks length : " + this.downloadTasks.size() + ".");
+		System.out.println("New task was added, task length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
 	}
@@ -138,13 +136,13 @@ public class DownloadManager {
 		downloadTask.setState(DownloadTask.DownloadState.STARTED);
 		syncDownloadTasksToDisk();
 
-		FileMetadata fileMetada = downloadTask.getFileMetadata();
-		TorrentSeed seed = fileMetada.getSeed();
+		FileMetadata fileMetadata = downloadTask.getFileMetadata();
+		TorrentSeed seed = fileMetadata.getSeed();
 		Peer self = new Peer();
 		// TODO: Set the correct peerId, infoHash and bitfield.
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHash(infoHash);
-		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetada.getBitfield() + ".");
+		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetadata.getBitfield() + ".");
 
 		List<Peer> peers = trackerManager.getPeers(seed);
 		System.out.println("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
@@ -167,11 +165,11 @@ public class DownloadManager {
 		// 1. Open a temp file.
 		// 2. Open download task file.
 		// 3. Create outgoing connections, and may accept incoming connections.
-		// 4. Some working variables, e.g. indexesRequesting.
+		// 4. Some working variables, e.g. PiecePicker.batchRequests.
 
 		// 1. Close the connections.
-		// 2. Remove the requesting index.
-		// 3. Close download task file and temp file.
+		// 2. Remove the requesting index from PiecePicker.
+		// 3. Close task file and temp file.
 		this.connectionManager.closePeerConnections(infoHash);
 		this.downloadTasks.get(infoHash).getFileMetadata().finalize();
 		try {
@@ -183,7 +181,6 @@ public class DownloadManager {
 			e.printStackTrace();
 		}
 	}
-
 
 	// If task is completed, shall we remove the corresponding download task?
 	// If you delete a running download task, system will sequentially call stopDownloadTask and removeDownloadTask.
@@ -214,10 +211,10 @@ public class DownloadManager {
 		// FileOutputStream : if the file does not exist, create a new one.
 
 		// TODO: rewrite the code, we should not repeat opening then closing just for one slice writing, we should keep the file always open.
-		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_TEMP_FILE));
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_FILE));
 		oos.writeObject(this.downloadTasks);
 		oos.close();
-		System.out.println("Latest downloadTasks : " + this.downloadTasks + ".");
+		System.out.println("downloadTasks : " + this.downloadTasks + ".");
 	}
 
 	public Bitmap getBitfield(String infoHash) {
