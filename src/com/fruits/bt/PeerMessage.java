@@ -433,14 +433,14 @@ public abstract class PeerMessage {
 		}
 
 		public ByteBuffer encode() {
-			byte[] bits = this.block.array();
-			ByteBuffer messageBytes = ByteBuffer.allocate(4 + PieceMessage.BASE_SIZE + bits.length);
-			System.out.println("PieceMessage prefixLength : " + (PieceMessage.BASE_SIZE + bits.length));
-			messageBytes.putInt(PieceMessage.BASE_SIZE + bits.length);
+			byte[] bytes = this.block.array();
+			ByteBuffer messageBytes = ByteBuffer.allocate(4 + PieceMessage.BASE_SIZE + bytes.length);
+			System.out.println("PieceMessage prefixLength : " + (PieceMessage.BASE_SIZE + bytes.length));
+			messageBytes.putInt(PieceMessage.BASE_SIZE + bytes.length);
 			messageBytes.put(PeerMessage.PIECE_MESSAGE_ID);
 			messageBytes.putInt(this.index);
 			messageBytes.putInt(this.begin);
-			messageBytes.put(bits);
+			messageBytes.put(bytes);
 			messageBytes.flip();
 			return messageBytes;
 		}

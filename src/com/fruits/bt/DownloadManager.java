@@ -188,7 +188,7 @@ public class DownloadManager {
 		this.downloadTasks.remove(infoHash);
 	  this.syncDownloadTasksToDisk();
 		if (deleteFiles) {
-			this.downloadTasks.get(infoHash).getFileMetadata().deleteFile();
+			this.downloadTasks.get(infoHash).getFileMetadata().delete();
 		}
 	}
 	

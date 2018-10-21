@@ -2,14 +2,13 @@ package com.fruits.bt;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fruits.bt.TorrentSeed.FileInfo;
 
 // TODO: Some days ago, if I open/write RandomAccessFile frequently, always got a exception.
 //       Now if I always open a file for write/read, the issue disappear.
@@ -22,12 +21,13 @@ public class FileMetadata implements Serializable {
 
 	private final TorrentSeed seed;
 	// The file to download, firstly it's a temp file, when downloading is completed, rename it.
-	private String filePath;
+	//private String filePath;
+	//private transient FileChannel fileChannel;
+	private List<FileInfo> fileInfos = new ArrayList<FileInfo>();
+
 	private List<Piece> pieces;
 	private int piecesCompleted;
 
-	private transient FileChannel fileChannel;
-	
 	private long bytesWritten;
 	private long bytesRead;
 
@@ -35,23 +35,59 @@ public class FileMetadata implements Serializable {
 	// FileMetadata is de-serialized from disk, so this constructor will not called except the first time.
 	public FileMetadata(TorrentSeed seed) throws IOException {
 		this.seed = seed;
-		this.filePath = Client.DOWNLOAD_DIR + File.separator + seed.getName();
-
-		File file = new File(this.filePath);
-		if (!file.exists()) {
-			file.createNewFile();
-		}
-
+		initFileInfos();
 		initPiecesAndSlices();
+	}
+
+	private void initFileInfos() throws IOException {		
+		if (seed.isDirectory()) {
+			int pos = 0;
+			List<FileInfo> infos = seed.getFileInfos();
+			for (FileInfo info : infos) {
+				info.setPath(Client.DOWNLOAD_DIR + File.separator + info.getPath());
+				Helper.createFile(info.getPath());
+				info.setStartPos(pos);
+				if (info.getLength() == 0) {
+					info.setEndPos(-1);
+				} else {
+					// inclusive
+					info.setEndPos(pos + info.getLength() - 1); // inclusive
+					pos += info.getLength();
+				}
+			}
+			this.fileInfos = infos;
+		} else {
+			FileInfo fileInfo = new FileInfo();
+			fileInfo.setPath(Client.DOWNLOAD_DIR + File.separator + seed.getName());
+			Helper.createFile(fileInfo.getPath());
+			fileInfo.setMd5sum(seed.getMD5sum());
+			long length = seed.getLength();
+			fileInfo.setLength(length);
+			fileInfo.setStartPos(0);
+			fileInfo.setEndPos(length - 1);
+			this.fileInfos.add(fileInfo);
+		}
 	}
 
 	private void initPiecesAndSlices() {
 		// Read the pieces status from temp file or create it from scratch.
-		long fileLength = seed.getLength();
+		long fileLength = 0;
+		if (seed.isDirectory()) {
+			List<FileInfo> fileInfos = seed.getFileInfos();
+			for (FileInfo fileInfo : fileInfos) {
+				fileLength += fileInfo.getLength();
+			}
+		} else {
+			fileLength = seed.getLength();
+		}
 		// 256K, BitTorrent 3.2 and old versions = 1MB.
 		int pieceLength = seed.getPieceLength(); // I created a demo seed, and piece length is 256K.                                  
 		int sliceLength = seed.getSliceLength();
 
+		if(pieceLength < sliceLength) {
+			System.out.println("Piece length: " + pieceLength + ", sliceLength: " + sliceLength + ".");
+			throw new RuntimeException("Piece length should not be less than slice length.");
+		}
 		//TODO: long->int?
 		int piecesSize = (int) fileLength / pieceLength;
 		int lastPieceLength = (int) fileLength % pieceLength;
@@ -90,42 +126,179 @@ public class FileMetadata implements Serializable {
 		}
 	}
 
-	// TODO:
-	// Need Multi thread consideration.
-	private void openFile() throws IOException {
-		if (this.fileChannel == null) {
-			this.fileChannel = FileChannel.open(Paths.get(this.filePath), StandardOpenOption.READ, StandardOpenOption.WRITE);
-		}
+	public void delete() {
+		for (FileInfo fileInfo : this.fileInfos)
+			fileInfo.delete();
 	}
 
-	private void closeFile() {
-		System.out.println("FileMetadata-> Closing temp file.");
-		if (fileChannel != null && fileChannel.isOpen()) {
-			try {
-				fileChannel.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	public void deleteFile() {
-		File file = new File(this.filePath);
-		if (file.exists()) {
-			file.delete();
-		}
-
-	}
 	// TODO: Who and when to call it?
 	// Added a hook for VM?
 	public void finalize() {
-		this.closeFile();
+		for (FileInfo fileInfo : this.fileInfos)
+			fileInfo.close();
+	}
+
+	/*
+	 * FileInfo [startPos, endPos]
+	 *  0 - -1 (inclusive)(empty file) -> file0
+	 *  0 - 2 (inclusive) -> file1
+	 *  3 - 17 -> file2
+	 * 18 - -1 (empty file) -> file3
+	 * 18 - 26 -> file4
+	 *
+	 * Example:
+	 * Slice(index: 1, begin: 4, length: 4), piece length = 12
+	 * start: 16 - 19(inclusive) -> written to file2& (file3 skipped)& file4 
+	 * 
+	 * piece[1]
+	 * slices [index, begin, length]	 
+	 * 1 0 4
+	 * 1 4 4 => absolute begin(inclusive): (12 * 1 + 4), absolute end(inclusive): (12 * 1 + 4 + 4 - 1)
+	 * 1 8 4
+	 * 
+	 */
+	public ByteBuffer readSlice(Slice slice) throws IOException {
+		System.out.println("Thread : " + Thread.currentThread() + " is reading slice, index = " + slice.getIndex() + ", begin = " + slice.getBegin() + ".");
+
+		int startPos/*inclusive*/ = this.seed.getPieceLength() * slice.getIndex() + slice.getBegin();
+		int endPos/*inclusive*/ = startPos + slice.getLength() - 1;
+		
+		ByteBuffer data = ByteBuffer.allocate(slice.getLength());
+		
+		boolean started = false;
+		for (int i = 0; i < this.fileInfos.size(); i++) {
+			FileInfo info = fileInfos.get(i);
+			if (info.getLength() == 0) // empty file, skip it.
+				continue;
+
+			long pos = -1;
+			long bytesRead = -1;
+			if (started) {
+				pos = 0;
+				bytesRead = info.getLength();
+			} else {
+				if (startPos <= info.getEndPos()) { // find the first file to write.
+					started = true;
+					// write how many bytes to this file?
+					pos = startPos - info.getStartPos(); // start position in current file.
+					bytesRead = (info.getEndPos() - startPos + 1); // at most bytes to write.
+				}
+			}
+			if (pos != -1) {
+				int size = Math.min(data.remaining(), (int) bytesRead);
+				ByteBuffer buffer = ByteBuffer.allocate(size);
+				FileChannel fileChannel = info.getFileChannel();
+				try {
+				  fileChannel.read(buffer);
+				  buffer.flip();
+				  data.put(buffer);
+				}catch (IOException e) {
+					e.printStackTrace();
+					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
+					return null;
+				}
+				if (!data.hasRemaining())
+					break;
+			}
+		}
+		
+		this.bytesRead += slice.getLength();
+		data.flip();
+		return data;
+	}
+	
+	/*
+	 * Piece/Slice
+	 *  file length: 26
+	 * piece length: 12
+	 * slice length: 4
+	 * 
+	 * piece[0]
+	 * slices [index, begin, length] 
+	 * 0 0 4
+	 * 0 4 4
+	 * 0 8 4
+	 * 
+	 * piece[1]
+	 * slices [index, begin, length]	 
+	 * 1 0 4
+	 * 1 4 4 => absolute begin(inclusive): (12 * 1 + 4), absolute end(inclusive): (12 * 1 + 4 + 4 - 1)
+	 * 1 8 4
+	 * 
+	 * piece[2]
+	 * slices [index, begin, length]	 
+	 * 2 0 2 => absolute begin(inclusive): (12 * 2 + 0), absolute end(inclusive): (12 * 2 + 0 + 2 - 1)
+	 * 
+	 * FileInfo [startPos, endPos]
+	 *  0 - -1 (inclusive)(empty file) -> file0
+	 *  0 - 2 (inclusive) -> file1
+	 *  3 - 17 -> file2
+	 * 18 - -1 (empty file) -> file3
+	 * 18 - 26 -> file4
+	 *
+	 * Example:
+	 * start: 16 - 19(inclusive) -> written to file2& (file3 skipped)& file4 
+	 */
+	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
+		System.out.println("Thread : " + Thread.currentThread() + " is writing slice, index = " + index + ", begin = " + begin + ".");
+		
+		int startPos/*inclusive*/ = this.seed.getPieceLength() * index + begin;
+		int endPos/*inclusive*/ = startPos + length - 1;
+
+		boolean started = false;
+		for (int i = 0; i < this.fileInfos.size(); i++) {
+			FileInfo info = fileInfos.get(i);
+			if (info.getLength() == 0) // empty file, skip it.
+				continue;
+
+			long pos = -1;
+			long bytesWrite = -1;
+			if (started) {
+				pos = 0;
+				bytesWrite = info.getLength();
+			} else {
+				if (startPos <= info.getEndPos()) { // find the first file to write.
+					started = true;
+					// write how many bytes to this file?
+					pos = startPos - info.getStartPos(); // start position in current file.
+					bytesWrite = (info.getEndPos() - startPos + 1); // at most bytes to write.
+				}
+			}
+			if (pos != -1) {
+				int size = Math.min(data.remaining(), (int) bytesWrite);
+				byte[] buffer = new byte[size];
+				data.get(buffer);
+				FileChannel fileChannel = info.getFileChannel();
+				try {
+				  fileChannel.write(ByteBuffer.wrap(buffer), pos); // TODO: Perf Improvement!
+				}catch (IOException e) {
+					e.printStackTrace();
+					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
+					return false;
+				}
+				if (!data.hasRemaining())
+					break;
+			}
+		}
+		
+		//file.seek(startPosition);
+		//TODO: length or data.array().length?
+		//file.write(data.array(), 0, length);
+		this.pieces.get(index).setSliceCompleted(begin);
+		boolean isPieceCompleted = pieces.get(index).isAllSlicesCompleted();
+		if (isPieceCompleted) {
+			piecesCompleted++;
+		}
+
+		this.bytesWritten += length;
+		return isPieceCompleted;
 	}
 
 	// @ return Slices of current piece are completed?
 	// TODO: VERY IMPORTANT!
 	// Previou verion we got IOException.
 	// Only if opening file fails, throw the IOException.
+	/*
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is writing slice.");
 		openFile();
@@ -146,13 +319,15 @@ public class FileMetadata implements Serializable {
 		if (isPieceCompleted) {
 			piecesCompleted++;
 		}
-		
+
 		this.bytesWritten += length;
 		return isPieceCompleted;
 	}
+	*/
 	
 	// In production, we should not open then close a file for writing/reading a slice.
 	// The file should be always open for random access.
+	/*
 	public ByteBuffer readSlice(Slice slice) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
 
@@ -173,19 +348,20 @@ public class FileMetadata implements Serializable {
 			// If read fails, return null.
 			return null;
 		}
-		
+
 		this.bytesRead += slice.getLength();
 		return buffer;
 	}
-
+	*/
+	
 	public boolean isAllPiecesCompleted() {
 		return (this.piecesCompleted == this.pieces.size());
 	}
 
 	public float getPercentCompleted() {
-		return this.piecesCompleted/this.pieces.size();
+		return this.piecesCompleted / this.pieces.size();
 	}
-	
+
 	public Bitmap getBitfield() {
 		// TODO: VERY IMPORTANT! 
 		// BitSet do not have a fixed length/size, e.g. we have 85 pieces, but never bitfield.length or bitfield.size = 85.
@@ -236,13 +412,14 @@ public class FileMetadata implements Serializable {
 	public long getBytesWritten() {
 		return this.bytesWritten;
 	}
-	
+
 	public long getBytesRead() {
 		return this.bytesRead;
 	}
-	
+
 	@Override
 	public String toString() {
-		return "FileMetadata [seed = " + seed + ", filePath = " + filePath + ",\n" + "pieces = " + pieces + ", piecesCompleted = " + piecesCompleted + "].\n";
+		return "FileMetadata [seed=" + seed + ", fileInfos=" + fileInfos + ", pieces=" + pieces + ", piecesCompleted=" + piecesCompleted + ", bytesWritten="
+				+ bytesWritten + ", bytesRead=" + bytesRead + "]";
 	}
 }
