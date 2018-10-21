@@ -111,17 +111,4 @@ public class Helper {
 		System.out.println("a is interested in b? " + interested);
 		return interested;
 	}
-	
-	
-	public static void main(String[] args) throws IOException {
-		System.out.println(new String(Helper.genClientId()));
-		/*
-		byte[] x = "-FRT-".getBytes();
-		byte[] a = new byte[20];
-		for(int i = 0; i < x.length; i++) {
-			a[i] = x[i];
-		}
-		System.out.println(Utils.bytes2HexString(x));
-		*/
-	}
 }

@@ -80,13 +80,4 @@ public class Bitmap {
 		sb.append(")]");
 		return sb.toString();
 	}
-	
-	public static void main(String[] args) {
-		Bitmap bitmap = new Bitmap(new byte[1]);
-		bitmap.set(0);
-		bitmap.set(6);
-		bitmap.set(7);
-		bitmap.clear(6);
-		System.out.println(bitmap);
-	}
 }
