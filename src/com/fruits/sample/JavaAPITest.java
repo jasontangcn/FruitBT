@@ -111,13 +111,13 @@ public class JavaAPITest {
 		Path path2 = new File("/home/abc").toPath();
 		int i = 0;
 		*/
-		
+
 		/*
 		for(int i = 0; i < 100; i++) {
 		  System.out.println(UUID.randomUUID());
 		}
 		*/
-		
+
 		/*
 		BitSet bitfield = new BitSet(85);
 		System.out.println(bitfield.size());
@@ -131,7 +131,7 @@ public class JavaAPITest {
 		System.out.println(bitset2.size());
 		System.out.println(bitset2.length());
 		*/
-		
+
 		/*
 		Random rand = new Random();
 		for(int i = 0; i < 10; i++) {
@@ -146,7 +146,7 @@ public class JavaAPITest {
 		System.out.println(rarestFirst);
 		*/
 		byte[] bytes = new byte[2];
-    int a = bytes[1] & (byte)1;
+		int a = bytes[1] & (byte) 1;
 	}
 
 	public static class Rate {

@@ -25,7 +25,6 @@ import com.fruits.bt.PeerMessage.ChokeMessage;
 import com.fruits.bt.PeerMessage.HaveMessage;
 import com.fruits.bt.PeerMessage.UnchokeMessage;
 
-
 /*
  * Regarding the network excepton.
  * 
@@ -192,7 +191,7 @@ public class PeerConnectionManager implements Runnable {
 					if (key.isAcceptable()) {
 						ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
 						SocketChannel socketChannel = serverSocket.accept(); // Lots of exceptions may be thrown.
-						
+
 						try {
 							socketChannel.configureBlocking(false);
 							System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
@@ -235,19 +234,19 @@ public class PeerConnectionManager implements Runnable {
 				}
 			}
 		} catch (Exception e) { // This exception may be thrown because of :
-			                      // (1) ServerSocketChannel does not work.
-			                      // (2) Selector does not work.
-			// TODO: Shall I call it or the Client call it?
+														// (1) ServerSocketChannel does not work.
+														// (2) Selector does not work.
+														// TODO: Shall I call it or the Client call it?
 			this.stop();
-			
+
 			throw new RuntimeException(e); // How to propagate this exception from child thread to parent thread?
 		}
 	}
-	
+
 	public PeerConnection createOutgoingConnection(Peer self, Peer peer) {
 		SocketChannel socketChannel = null;
 		try {
-      socketChannel = SocketChannel.open(); // IOException
+			socketChannel = SocketChannel.open(); // IOException
 			socketChannel.configureBlocking(false);
 			socketChannel.socket().setReuseAddress(true); // SocketException
 			// socketChannel.bind(new InetSocketAddress("127.0.0.1", 6666));
@@ -255,20 +254,20 @@ public class PeerConnectionManager implements Runnable {
 			socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
 			System.out.println("Connecting to peer: " + peer.getAddress() + ".");
 			PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager);
-	
+
 			self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
 			conn.setSelf(self);
 			conn.setPeer(peer);
-	
+
 			// TODO: VERY IMPORTANT!
 			// selector.select() is blocking, and register() is blocking too.
 			register(socketChannel, SelectionKey.OP_CONNECT, conn);
-			
+
 			return conn;
-		}catch(IOException e) {
+		} catch (IOException e) {
 			System.out.println("Failed to create connection -> self : " + self + ", peer : " + peer + ".");
 			e.printStackTrace();
-			
+
 			Helper.closeChannel(socketChannel);
 			return null;
 		}
@@ -276,11 +275,11 @@ public class PeerConnectionManager implements Runnable {
 
 	public void stop() {
 		System.out.println("PeerConnectionManager is stopping.");
-		
-		if(this.stopped)
+
+		if (this.stopped)
 			return;
 		this.stopped = true;
-		
+
 		this.choker.shutdown();
 		this.aliveManager.shutdown();
 		this.connectionManagerThread.interrupt();
@@ -292,8 +291,8 @@ public class PeerConnectionManager implements Runnable {
 	// For outgoing connection: the connection may not finish connection yet.
 	// For incoming connection: the connection at least has been accepted.
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		System.out.println("New connection is created, outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", ["
-				+ connection + "]");
+		System.out.println(
+				"New connection is created, outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", [" + connection + "]");
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
 			connections = new ArrayList<PeerConnection>();
@@ -305,31 +304,31 @@ public class PeerConnectionManager implements Runnable {
 	public List<PeerConnection> getPeerConnections(String infoHash) {
 		return this.peerConnections.get(infoHash);
 	}
-	
+
 	public void removePeerConnection(String infoHash, String connectionId) {
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 
 		Iterator<PeerConnection> iterator = connections.iterator();
-		while(iterator.hasNext()) {
+		while (iterator.hasNext()) {
 			PeerConnection conn = iterator.next();
-			if(conn.getConnectionId().equalsIgnoreCase(connectionId)) {
-			  iterator.remove();
-			  break;
+			if (conn.getConnectionId().equalsIgnoreCase(connectionId)) {
+				iterator.remove();
+				break;
 			}
 		}
 	}
-	
+
 	public void closePeerConnections(String infoHash) {
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 
 		Iterator<PeerConnection> iterator = connections.iterator();
-		while(iterator.hasNext()) {
+		while (iterator.hasNext()) {
 			PeerConnection conn = iterator.next();
 			iterator.remove();
 			conn.close();
 		}
 	}
-	
+
 	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
@@ -355,11 +354,11 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	public void unregister(SocketChannel socketChannel) {
-		if(socketChannel.isRegistered()) // it may be registered in multiple selectors.
-		  socketChannel.keyFor(this.selector).cancel();
+		if (socketChannel.isRegistered()) // it may be registered in multiple selectors.
+			socketChannel.keyFor(this.selector).cancel();
 		selector.wakeup();
 	}
-	
+
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) {
 		Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
 

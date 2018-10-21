@@ -18,7 +18,7 @@ public class BTAPITest {
 		bitmap.set(7);
 		bitmap.clear(6);
 		System.out.println(bitmap);
-		
+
 		System.out.println(new String(Helper.genClientId()));
 		/*
 		byte[] x = "-FRT-".getBytes();
@@ -28,14 +28,14 @@ public class BTAPITest {
 		}
 		System.out.println(Utils.bytes2HexString(x));
 		*/
-		
+
 		/*
 		TorrentSeed seed = TorrentSeed.parseSeedFile("D:\\TorrentDownload3\\Wireshark-win32-1.10.0.exe.torrent");
 		System.out.println(seed);
 		FileMetadata fileMetadata = new FileMetadata(seed);
 		fileMetadata.finalize();
 		*/
-		
+
 		// Test download single file.
 		/*
 		TorrentSeed seed = TorrentSeed.parseSeedFile("D:\\TorrentDownload3\\Wireshark-win32-1.10.0.exe.torrent");
@@ -48,7 +48,7 @@ public class BTAPITest {
 		for(Slice slice : slices) {
 			int startPos = seed.getPieceLength() * slice.getIndex() + slice.getBegin();
 			int length = slice.getLength();
-
+		
 			ByteBuffer buffer = ByteBuffer.allocate(length);
 			raf.getChannel().read(buffer, startPos);
 			buffer.flip();
@@ -57,13 +57,13 @@ public class BTAPITest {
 		
 		raf.close();
 		*/
-		
+
 		/*
 		TorrentSeed seed = TorrentSeed.parseSeedFile("D:\\TorrentDownload3\\BitTorrent-4.0.3-dummy.torrent");
 		System.out.println(seed);
 		FileMetadata metadata = new FileMetadata(seed, true);
-
-
+		
+		
 		TorrentSeed seed2 = TorrentSeed.parseSeedFile("D:\\TorrentDownload3\\BitTorrent-4.0.3-dummy.torrent");
 		FileMetadata metadata2 = new FileMetadata(seed2, false);
 		

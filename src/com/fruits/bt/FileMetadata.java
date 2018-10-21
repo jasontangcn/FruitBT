@@ -39,7 +39,7 @@ public class FileMetadata implements Serializable {
 		initPiecesAndSlices();
 	}
 
-	private void initFileInfos() throws IOException {		
+	private void initFileInfos() throws IOException {
 		if (seed.isDirectory()) {
 			int pos = 0;
 			List<FileInfo> infos = seed.getFileInfos();
@@ -84,7 +84,7 @@ public class FileMetadata implements Serializable {
 		int pieceLength = seed.getPieceLength(); // I created a demo seed, and piece length is 256K.                                  
 		int sliceLength = seed.getSliceLength();
 
-		if(pieceLength < sliceLength) {
+		if (pieceLength < sliceLength) {
 			System.out.println("Piece length: " + pieceLength + ", sliceLength: " + sliceLength + ".");
 			throw new RuntimeException("Piece length should not be less than slice length.");
 		}
@@ -162,9 +162,9 @@ public class FileMetadata implements Serializable {
 
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * slice.getIndex() + slice.getBegin();
 		int endPos/*inclusive*/ = startPos + slice.getLength() - 1;
-		
+
 		ByteBuffer data = ByteBuffer.allocate(slice.getLength());
-		
+
 		boolean started = false;
 		for (int i = 0; i < this.fileInfos.size(); i++) {
 			FileInfo info = fileInfos.get(i);
@@ -189,10 +189,10 @@ public class FileMetadata implements Serializable {
 				ByteBuffer buffer = ByteBuffer.allocate(size);
 				FileChannel fileChannel = info.getFileChannel();
 				try {
-				  fileChannel.read(buffer);
-				  buffer.flip();
-				  data.put(buffer);
-				}catch (IOException e) {
+					fileChannel.read(buffer);
+					buffer.flip();
+					data.put(buffer);
+				} catch (IOException e) {
 					e.printStackTrace();
 					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 					return null;
@@ -201,12 +201,12 @@ public class FileMetadata implements Serializable {
 					break;
 			}
 		}
-		
+
 		this.bytesRead += slice.getLength();
 		data.flip();
 		return data;
 	}
-	
+
 	/*
 	 * Piece/Slice
 	 *  file length: 26
@@ -241,7 +241,7 @@ public class FileMetadata implements Serializable {
 	 */
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is writing slice, index = " + index + ", begin = " + begin + ".");
-		
+
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * index + begin;
 		int endPos/*inclusive*/ = startPos + length - 1;
 
@@ -270,8 +270,8 @@ public class FileMetadata implements Serializable {
 				data.get(buffer);
 				FileChannel fileChannel = info.getFileChannel();
 				try {
-				  fileChannel.write(ByteBuffer.wrap(buffer), pos); // TODO: Perf Improvement!
-				}catch (IOException e) {
+					fileChannel.write(ByteBuffer.wrap(buffer), pos); // TODO: Perf Improvement!
+				} catch (IOException e) {
 					e.printStackTrace();
 					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 					return false;
@@ -280,7 +280,7 @@ public class FileMetadata implements Serializable {
 					break;
 			}
 		}
-		
+
 		//file.seek(startPosition);
 		//TODO: length or data.array().length?
 		//file.write(data.array(), 0, length);
@@ -320,21 +320,21 @@ public class FileMetadata implements Serializable {
 		if (isPieceCompleted) {
 			piecesCompleted++;
 		}
-
+	
 		this.bytesWritten += length;
 		return isPieceCompleted;
 	}
 	*/
-	
+
 	// To support directory, so discard this function.
 	// In production, we should not open then close a file for writing/reading a slice.
 	// The file should be always open for random access.
 	/*
 	public ByteBuffer readSlice(Slice slice) throws IOException {
 		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
-
+	
 		openFile();
-
+	
 		int startPos = (this.seed.getPieceLength() * slice.getIndex()) + slice.getBegin();
 		//byte[] buffer = new byte[slice.getLength()];
 		ByteBuffer buffer = ByteBuffer.allocate(slice.getLength());
@@ -350,12 +350,12 @@ public class FileMetadata implements Serializable {
 			// If read fails, return null.
 			return null;
 		}
-
+	
 		this.bytesRead += slice.getLength();
 		return buffer;
 	}
 	*/
-	
+
 	public boolean isAllPiecesCompleted() {
 		return (this.piecesCompleted == this.pieces.size());
 	}

@@ -29,7 +29,7 @@ public class Peer {
 	public void setPeerId(byte[] peerId) {
 		this.peerId = peerId;
 	}
-	
+
 	public byte[] getInfoHash() {
 		return this.infoHash;
 	}
@@ -38,7 +38,7 @@ public class Peer {
 		this.infoHash = infoHash;
 		this.infoHashString = Utils.bytes2HexString(infoHash);
 	}
-	
+
 	public void setInfoHashString(String infoHashString) {
 		this.infoHashString = infoHashString;
 		this.infoHash = Utils.hexStringToBytes(infoHashString);

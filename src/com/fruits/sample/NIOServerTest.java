@@ -55,10 +55,10 @@ public class NIOServerTest {
 				} else if (key.isWritable()) {
 					System.out.println("Ready to write data");
 
-					SocketChannel socketChannel = (SocketChannel)key.channel();
+					SocketChannel socketChannel = (SocketChannel) key.channel();
 					System.out.println("This channel is open? " + socketChannel.isOpen());
 					ByteBuffer buffer = ByteBuffer.allocate(1024);
-					for(int i = 0; i < 10; i++) {
+					for (int i = 0; i < 10; i++) {
 						buffer.clear();
 						buffer.put(("Hello from server [" + i + "].").getBytes());
 						buffer.flip();

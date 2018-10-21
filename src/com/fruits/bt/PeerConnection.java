@@ -36,7 +36,7 @@ public class PeerConnection {
 
 	private State state = State.UNDEFINED;
 	private String connectionId;
-	
+
 	private final boolean isOutgoingConnection;
 	private final SocketChannel socketChannel;
 	private final PeerConnectionManager connectionManager;
@@ -107,10 +107,10 @@ public class PeerConnection {
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHashString());
-				
+
 				// TODO: need to validate it before assigning the length?
 				peerBitfield.setLength(selfBitfield.length());
-				
+
 				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.IN_BITFIELD_RECEIVED;
@@ -156,12 +156,12 @@ public class PeerConnection {
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				peerBitfield.setLength(selfBitfield.length());
-				
+
 				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
-				
-				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
+
+				this.connectionId = this.peer.getInfoHash() + "-" + UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 
 				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
@@ -240,14 +240,14 @@ public class PeerConnection {
 				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHashString(), haveMessage.getPieceIndex());
 				// TODO: XXXX
 				if (!this.choked && interestedNow) {
-					if(!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHashString(), connectionId))
-					  this.downloadManager.getPiecePicker().requestMoreSlices(this);
+					if (!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHashString(), connectionId))
+						this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
 			} else if (message instanceof RequestMessage) {
 				System.out.println("PeerConnection->readMessage: Got a RequestMessage " + message + ".");
-				
+
 				RequestMessage request = (RequestMessage) message;
 				Slice slice = new Slice(request.getIndex(), request.getBegin(), request.getLength());
 				// TODO: data may null if failed to read slice.
@@ -342,8 +342,8 @@ public class PeerConnection {
 			} else {
 				// It should be incoming connection.
 				this.state = State.IN_EXCHANGE_BITFIELD_COMPLETED;
-				
-				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
+
+				this.connectionId = this.peer.getInfoHash() + "-" + UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				System.out.println("Status : " + this.state + ", completed writing bitfield message to peer.");
@@ -519,12 +519,12 @@ public class PeerConnection {
 
 	public void selfClose() {
 		this.close();
-		
+
 		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
 			this.connectionManager.removePeerConnection(this.self.getInfoHashString(), this.connectionId);
 		}
 	}
-	
+
 	// TODO: Connection managing.
 	// Is it enough?
 	// TODO: Carefully! close may be called during the handshake stage, so self.getInfoHash may return NULL?
@@ -535,7 +535,7 @@ public class PeerConnection {
 		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
 		System.out.println("Closing PeerConnection : " + this);
 		this.connectionManager.unregister(this.socketChannel);
-		
+
 		Helper.closeChannel(socketChannel);
 		this.downloadManager.getPiecePicker().removeConnection(this);
 	}
@@ -551,7 +551,7 @@ public class PeerConnection {
 	public String getConnectionId() {
 		return connectionId;
 	}
-	
+
 	public Peer getSelf() {
 		return self;
 	}

@@ -197,12 +197,10 @@ public class TorrentSeed implements Serializable {
 
 	@Override
 	public String toString() {
-		return "TorrentSeed [announce=" + announce + ", announceList=" + announceList + ",\n" 
-			+ "creationDate=" + creationDate + ", createdBy=" + createdBy + ", comment=" + comment + ", encoding=" + encoding + ", pieceLength=" + pieceLength + ",\n"
-			+ "pieceHashs=" + pieceHashs + ",\n"
-			+ "pvt=" + pvt + ", sliceLength=" + sliceLength + ", name=" + name + ", length=" + length + ", md5sum=" + md5sum + ",\n"
-			+ "fileInfos=" + fileInfos + ",\n"
-			+ "infoHash=" + infoHash + "]";
+		return "TorrentSeed [announce=" + announce + ", announceList=" + announceList + ",\n" + "creationDate=" + creationDate + ", createdBy=" + createdBy
+				+ ", comment=" + comment + ", encoding=" + encoding + ", pieceLength=" + pieceLength + ",\n" + "pieceHashs=" + pieceHashs + ",\n" + "pvt=" + pvt
+				+ ", sliceLength=" + sliceLength + ", name=" + name + ", length=" + length + ", md5sum=" + md5sum + ",\n" + "fileInfos=" + fileInfos + ",\n"
+				+ "infoHash=" + infoHash + "]";
 	}
 
 	public static TorrentSeed parseSeedFile(String seedFilePath) throws IOException {
@@ -368,7 +366,7 @@ public class TorrentSeed implements Serializable {
 		private long length;
 		private String path;
 		private String md5sum;
-		
+
 		private transient FileChannel fileChannel;
 		private long startPos; // inclusive
 		private long endPos; // inclusive, if file length = 0, endPos = -1 aways.
@@ -380,7 +378,7 @@ public class TorrentSeed implements Serializable {
 				this.fileChannel = FileChannel.open(Paths.get(this.path), StandardOpenOption.READ, StandardOpenOption.WRITE);
 			}
 		}
-		
+
 		public void close() {
 			System.out.println("FileInfo -> Closing temp file.");
 			if (fileChannel != null && fileChannel.isOpen()) {
@@ -391,14 +389,14 @@ public class TorrentSeed implements Serializable {
 				}
 			}
 		}
-		
+
 		public void delete() {
 			File file = new File(this.path);
 			if (file.exists()) {
 				file.delete();
 			}
 		}
-		
+
 		public long getLength() {
 			return length;
 		}
@@ -422,7 +420,7 @@ public class TorrentSeed implements Serializable {
 		public void setMd5sum(String md5sum) {
 			this.md5sum = md5sum;
 		}
-		
+
 		public long getStartPos() {
 			return startPos;
 		}
@@ -443,7 +441,7 @@ public class TorrentSeed implements Serializable {
 			this.open();
 			return this.fileChannel;
 		}
-		
+
 		@Override
 		public String toString() {
 			return "\n" + "FileInfo [length=" + length + ", path=" + path + ", md5sum=" + md5sum + ", startPos=" + startPos + ", endPos=" + endPos + "]";

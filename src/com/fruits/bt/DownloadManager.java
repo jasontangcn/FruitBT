@@ -104,7 +104,7 @@ public class DownloadManager {
 	public PiecePicker getPiecePicker() {
 		return this.piecePicker;
 	}
-	
+
 	public void finalize() {
 		for (DownloadTask task : this.downloadTasks.values()) {
 			task.getFileMetadata().finalize();
@@ -186,12 +186,12 @@ public class DownloadManager {
 	// If you delete a running download task, system will sequentially call stopDownloadTask and removeDownloadTask.
 	public void removeDownloadTask(String infoHash, boolean deleteFiles) throws IOException {
 		this.downloadTasks.remove(infoHash);
-	  this.syncDownloadTasksToDisk();
+		this.syncDownloadTasksToDisk();
 		if (deleteFiles) {
 			this.downloadTasks.get(infoHash).getFileMetadata().delete();
 		}
 	}
-	
+
 	public void pauseDownloadTask(String infoHash) {
 	}
 
@@ -230,7 +230,7 @@ public class DownloadManager {
 			return downloadTask.getFileMetadata().getPercentCompleted();
 		return -1;
 	}
-	
+
 	public ByteBuffer readSlice(String infoHash, Slice slice) {
 		try {
 			DownloadTask task = this.downloadTasks.get(infoHash);
@@ -245,7 +245,7 @@ public class DownloadManager {
 			return null;
 		}
 	}
-	
+
 	// TODO: Register listeners to FileMetadata for events, e.g. slice write, piece completed, whole file completed?
 	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
 		try {
