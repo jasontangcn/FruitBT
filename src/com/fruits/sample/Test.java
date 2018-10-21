@@ -33,9 +33,11 @@ public class Test {
 		System.out.println(file1);
 		System.out.println(file1.getAbsoluteFile().getParentFile().getParentFile());
 		*/
-		
+		/*
 		File file = new File("D:\\TorrentDownload\\a\\xx");
 		System.out.println(file.exists());
+		*/
+		System.out.println("1234567890".getBytes().length);
 	}
 
 }

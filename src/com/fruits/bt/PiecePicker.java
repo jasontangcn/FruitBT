@@ -46,7 +46,7 @@ public class PiecePicker {
 
 	public void sliceReceived(PeerConnection connection) {
 		System.out.println("PiecePicker: sliceReceived is called.");
-		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHash(), connection.getConnectionId());
+		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHashString(), connection.getConnectionId());
 		request.setReceived(request.getReceived() + 1);
 
 		if (request.isCompleted()) {
@@ -75,7 +75,7 @@ public class PiecePicker {
 		System.out.println("PiecePicker: add a new connection : " + connection.getConnectionId() + ".");
 		this.connections.add(connection);
 
-		String infoHash = connection.getSelf().getInfoHash();
+		String infoHash = connection.getSelf().getInfoHashString();
 		List<BatchRequest> requests = this.batchRequests.get(infoHash);
 		if (requests == null) {
 			requests = new ArrayList<BatchRequest>();
@@ -113,7 +113,7 @@ public class PiecePicker {
 			}
 		}
 
-		String infoHash = connection.getSelf().getInfoHash();
+		String infoHash = connection.getSelf().getInfoHashString();
 		Bitmap peerBitfield = connection.getPeer().getBitfield();
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		for (int i = 0; i < peerBitfield.length(); i++) {
@@ -157,7 +157,7 @@ public class PiecePicker {
 	// 4. 
 	public void requestMoreSlices(PeerConnection connection) {
 		System.out.println("PiecePicker: start to work.");
-		String infoHash = connection.getSelf().getInfoHash();
+		String infoHash = connection.getSelf().getInfoHashString();
 		String connectionId = connection.getConnectionId();
 		
 		FileMetadata metadata = this.downloadManager.getDownloadTask(infoHash).getFileMetadata();

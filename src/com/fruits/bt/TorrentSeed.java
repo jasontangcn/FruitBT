@@ -52,7 +52,8 @@ public class TorrentSeed implements Serializable {
 	private String encoding;
 
 	private int pieceLength; // piece: 256K = 262144 bytes, slice : 16k
-	private List<String> pieceHashs;
+	private List<byte[]> pieceHashs;
+	//private List<String> pieceHashs;
 	private int pvt;
 	// TODO: Change the default slice length to 16K.
 	// To make the demo simpler, I use 16K * 4 as the default slice length.
@@ -65,7 +66,8 @@ public class TorrentSeed implements Serializable {
 
 	private List<FileInfo> fileInfos;
 
-	private String infoHash;
+	//private String infoHash;
+	private byte[] infoHash;
 
 	public String getAnnounce() {
 		return announce;
@@ -123,11 +125,11 @@ public class TorrentSeed implements Serializable {
 		this.pieceLength = pieceLength;
 	}
 
-	public void setPieceHashs(List<String> pieceHashs) {
+	public void setPieceHashs(List<byte[]> pieceHashs) {
 		this.pieceHashs = pieceHashs;
 	}
 
-	public List<String> getPieceHashs() {
+	public List<byte[]> getPieceHashs() {
 		return pieceHashs;
 	}
 
@@ -179,11 +181,11 @@ public class TorrentSeed implements Serializable {
 		this.fileInfos = fileInfos;
 	}
 
-	public String getInfoHash() {
-		return infoHash;
+	public byte[] getInfoHash() {
+		return this.infoHash;
 	}
 
-	public void setInfoHash(String infoHash) {
+	public void setInfoHash(byte[] infoHash) {
 		this.infoHash = infoHash;
 	}
 
@@ -280,10 +282,12 @@ public class TorrentSeed implements Serializable {
 		int pieceLength = info.get(TorrentSeed.METAINFO_INFO_PIECE_LENGTH).getInt();
 		// "pieces"
 		byte[] pieceHashsBytes = info.get(TorrentSeed.METAINFO_INFO_PIECES).getBytes();
-		List<String> pieceHashs = new ArrayList<String>();
+		List<byte[]> pieceHashs = new ArrayList<byte[]>();
+		//List<String> pieceHashs = new ArrayList<String>();
 		for (int i = 0; i < (pieceHashsBytes.length / 20); i++) {
 			byte[] pieceHashByte = Arrays.copyOfRange(pieceHashsBytes, i * 20, (i + 1) * 20);
-			pieceHashs.add(Utils.bytes2HexString(pieceHashByte));
+			//pieceHashs.add(Utils.bytes2HexString(pieceHashByte));
+			pieceHashs.add(pieceHashByte);
 		}
 		int pvt/*private*/ = -1;
 		BEValue privateValue = info.get(TorrentSeed.METAINFO_INFO_PRIVATE);
@@ -351,7 +355,8 @@ public class TorrentSeed implements Serializable {
 
 		try {
 			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());
-			seed.setInfoHash(Utils.bytes2HexString(infoHash));
+			seed.setInfoHash(infoHash);
+			//seed.setInfoHash(Utils.bytes2HexString(infoHash));
 		} catch (Exception e) {
 			throw new IOException(e);
 		}

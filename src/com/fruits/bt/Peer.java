@@ -1,12 +1,14 @@
 package com.fruits.bt;
 
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 
 public class Peer {
 	private InetSocketAddress address;
 
-	private String peerId; // same with the peerId passed to Tracker
-	private String infoHash;
+	private byte[] peerId; // same with the peerId passed to Tracker
+	private byte[] infoHash;
+	private String infoHashString;
 	private Bitmap bitfield; // self should not use this field, it should be null.
 
 	public Peer() {
@@ -20,20 +22,30 @@ public class Peer {
 		this.address = address;
 	}
 
-	public String getPeerId() {
+	public byte[] getPeerId() {
 		return peerId;
 	}
 
-	public void setPeerId(String peerId) {
+	public void setPeerId(byte[] peerId) {
 		this.peerId = peerId;
 	}
-
-	public String getInfoHash() {
-		return infoHash;
+	
+	public byte[] getInfoHash() {
+		return this.infoHash;
 	}
 
-	public void setInfoHash(String infoHash) {
+	public void setInfoHash(byte[] infoHash) {
 		this.infoHash = infoHash;
+		this.infoHashString = Utils.bytes2HexString(infoHash);
+	}
+	
+	public void setInfoHashString(String infoHashString) {
+		this.infoHashString = infoHashString;
+		this.infoHash = Utils.hexStringToBytes(infoHashString);
+	}
+
+	public String getInfoHashString() {
+		return this.infoHashString;
 	}
 
 	public Bitmap getBitfield() {
@@ -46,6 +58,7 @@ public class Peer {
 
 	@Override
 	public String toString() {
-		return "Peer [address=" + address + ", peerId=" + peerId + ", infoHash=" + infoHash + ", bitfield=" + bitfield + "].\n";
+		return "Peer [address=" + address + ", peerId=" + Arrays.toString(peerId) + ", infoHash=" + Arrays.toString(infoHash) + ", infoHashString=" + infoHashString
+				+ ", bitfield=" + bitfield + "]";
 	}
 }

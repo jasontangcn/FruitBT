@@ -8,7 +8,7 @@ public class Piece implements Serializable {
 	private static final long serialVersionUID = 2969199847197526105L;
 
 	private final int index;
-	private String sha1hash;
+	private byte[] sha1hash;
 	private final List<Slice> slices;
 
 	public Piece(int index, List<Slice> slices) {
@@ -76,11 +76,11 @@ public class Piece implements Serializable {
 		return index;
 	}
 
-	public String getSha1hash() {
+	public byte[] getSha1hash() {
 		return sha1hash;
 	}
 
-	public void setSha1hash(String sha1hash) {
+	public void setSha1hash(byte[] sha1hash) {
 		this.sha1hash = sha1hash;
 	}
 

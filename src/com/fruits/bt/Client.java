@@ -9,11 +9,11 @@ public class Client {
 	public static String DOWNLOAD_DIR; // "D:\\TorrentDownload";
 	public static String DOWNLOAD_TASKS_FILE; // "D:\\TorrentDownload\\downloadTasks.tmp"
 
-	public static String PEER_ID;
+	public static byte[] PEER_ID;
 	public static String LISTENER_DOMAIN; // "127.0.0.1"
 	public static int LISTENER_PORT; // 8888
 
-	public static String REMOTE_PEER_ID;
+	public static byte[] REMOTE_PEER_ID;
 	public static String REMOTE_DOMAIN; // "127.0.0.1"
 	public static int REMOTE_PORT; // 6666
 
@@ -28,14 +28,14 @@ public class Client {
 
 		LISTENER_DOMAIN = props.getProperty("listener.domain");
 		LISTENER_PORT = Integer.parseInt(props.getProperty("listener.port"));
-		PEER_ID = props.getProperty("peer.id");
+		PEER_ID = Helper.genClientId(); //props.getProperty("peer.id");
 
 		REMOTE_DOMAIN = props.getProperty("remote.domain");
 		REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
-		REMOTE_PEER_ID = props.getProperty("remote.peer.id");
+		REMOTE_PEER_ID = Helper.genClientId(); //props.getProperty("remote.peer.id");
 
-		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + PEER_ID + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", " + REMOTE_PEER_ID
-				+ ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT);
+		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", " + new String(REMOTE_PEER_ID)
+				+ ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT + ".");
 	}
 
 	public static void main(String[] args) throws IOException {

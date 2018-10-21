@@ -78,12 +78,12 @@ public class PeerConnection {
 			if (message == null)
 				return;
 
-			String infoHash = message.getInfoHashString();
+			byte[] infoHash = message.getInfoHash();
 
 			this.peer = new Peer();
 			this.peer.setAddress((InetSocketAddress) this.socketChannel.socket().getRemoteSocketAddress());
 			this.peer.setInfoHash(infoHash);
-			this.peer.setPeerId(message.getPeerIdString());
+			this.peer.setPeerId(message.getPeerId());
 
 			//TODO: DownloadManager should not appear here?
 			this.self.setInfoHash(infoHash);
@@ -106,7 +106,7 @@ public class PeerConnection {
 				// TODO: Set the bitfield of this.peer.
 				this.peer.setBitfield(peerBitfield);
 
-				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHash());
+				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHashString());
 				
 				// TODO: need to validate it before assigning the length?
 				peerBitfield.setLength(selfBitfield.length());
@@ -132,8 +132,8 @@ public class PeerConnection {
 			HandshakeMessage message = handshakeHandler.readMessage();
 			if (message == null)
 				return;
-			this.peer.setPeerId(message.getPeerIdString());
-			this.peer.setInfoHash(message.getInfoHashString());
+			this.peer.setPeerId(message.getPeerId());
+			this.peer.setInfoHash(message.getInfoHash());
 			this.state = State.OUT_HANDSHAKE_MESSAGE_RECEIVED;
 			System.out.println("Status : " + this.state + ", received handshake message [" + message + "].");
 		}
@@ -154,7 +154,7 @@ public class PeerConnection {
 				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
-				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				peerBitfield.setLength(selfBitfield.length());
 				
 				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
@@ -162,7 +162,7 @@ public class PeerConnection {
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 				
 				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
-				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
+				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 
 				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
 				if (this.interesting) {
@@ -228,7 +228,7 @@ public class PeerConnection {
 
 				boolean interestedNow = false;
 				if (!this.interesting) {
-					boolean interested = Helper.isInterested(this.downloadManager.getBitfield(self.getInfoHash()), this.peer.getBitfield());
+					boolean interested = Helper.isInterested(this.downloadManager.getBitfield(self.getInfoHashString()), this.peer.getBitfield());
 					this.interesting = interested;
 					if (interested) {
 						interestedNow = true;
@@ -237,10 +237,10 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHash(), haveMessage.getPieceIndex());
+				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHashString(), haveMessage.getPieceIndex());
 				// TODO: XXXX
 				if (!this.choked && interestedNow) {
-					if(!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHash(), connectionId))
+					if(!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHashString(), connectionId))
 					  this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
@@ -251,7 +251,7 @@ public class PeerConnection {
 				RequestMessage request = (RequestMessage) message;
 				Slice slice = new Slice(request.getIndex(), request.getBegin(), request.getLength());
 				// TODO: data may null if failed to read slice.
-				ByteBuffer data = this.downloadManager.readSlice(self.getInfoHash(), slice);
+				ByteBuffer data = this.downloadManager.readSlice(self.getInfoHashString(), slice);
 				if (data != null) {
 					PieceMessage pieceMessage = new PieceMessage(slice.getIndex(), slice.getBegin(), data);
 					addMessageToSend(pieceMessage);
@@ -261,7 +261,7 @@ public class PeerConnection {
 				// Is it OK to use .limit() to get the length of the ByteBuffer?
 				// TODO: XXXX
 				// Silent but the writing may fail.
-				this.downloadManager.writeSlice(self.getInfoHash(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
+				this.downloadManager.writeSlice(self.getInfoHashString(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
 				this.downloadManager.getPiecePicker().sliceReceived(this);
 				System.out.println("PeerConnection->readMessage: Got a PieceMessage " + message + ".");
 
@@ -288,7 +288,7 @@ public class PeerConnection {
 	public void writeMessage() { // No exception is thrown, the exceptions are handled in where they appear.
 		if (this.state == State.IN_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!this.handshakeHandler.isSendingInProgress()) {
-				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()), self.getPeerId().getBytes());
+				HandshakeMessage handshakeMessage = new HandshakeMessage(self.getInfoHash(), self.getPeerId());
 				System.out.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
 				handshakeHandler.setMessageToSend(handshakeMessage);
 			} else {
@@ -321,7 +321,7 @@ public class PeerConnection {
 
 		if (this.state == State.IN_BITFIELD_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
-				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
 				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -344,7 +344,7 @@ public class PeerConnection {
 				this.state = State.IN_EXCHANGE_BITFIELD_COMPLETED;
 				
 				this.connectionId = this.peer.getInfoHash() + "-" +  UUID.randomUUID().toString();
-				this.connectionManager.addPeerConnection(this.peer.getInfoHash(), this);
+				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				System.out.println("Status : " + this.state + ", completed writing bitfield message to peer.");
 
@@ -361,7 +361,7 @@ public class PeerConnection {
 		if (this.state == State.OUT_CONNECTED) {
 			//TODO: Use a while to ensure the message is totally written to peer.
 			if (!handshakeHandler.isSendingInProgress()) {
-				HandshakeMessage handshakeMessage = new HandshakeMessage(Utils.hexStringToBytes(self.getInfoHash()), self.getPeerId().getBytes());
+				HandshakeMessage handshakeMessage = new HandshakeMessage(self.getInfoHash(), self.getPeerId());
 				System.out.println("Status : " + this.state + ", writing handshake message to peer [" + handshakeMessage + "].");
 				handshakeHandler.setMessageToSend(handshakeMessage);
 			} else {
@@ -393,7 +393,7 @@ public class PeerConnection {
 
 		if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
-				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHash());
+				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				System.out.println("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
 				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -521,7 +521,7 @@ public class PeerConnection {
 		this.close();
 		
 		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
-			this.connectionManager.removePeerConnection(this.self.getInfoHash(), this.connectionId);
+			this.connectionManager.removePeerConnection(this.self.getInfoHashString(), this.connectionId);
 		}
 	}
 	

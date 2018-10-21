@@ -121,7 +121,7 @@ public class DownloadManager {
 		DownloadTask task = new DownloadTask(seed);
 		task.setState(DownloadTask.DownloadState.PENDING);
 
-		this.downloadTasks.put(seed.getInfoHash(), task);
+		this.downloadTasks.put(Utils.bytes2HexString(seed.getInfoHash()), task);
 		System.out.println("New task was added, task length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
@@ -141,7 +141,7 @@ public class DownloadManager {
 		Peer self = new Peer();
 		// TODO: Set the correct peerId, infoHash and bitfield.
 		self.setPeerId(Client.PEER_ID);
-		self.setInfoHash(infoHash);
+		self.setInfoHashString(infoHash);
 		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetadata.getBitfield() + ".");
 
 		List<Peer> peers = trackerManager.getPeers(seed);

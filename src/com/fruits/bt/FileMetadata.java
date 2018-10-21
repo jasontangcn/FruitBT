@@ -294,6 +294,7 @@ public class FileMetadata implements Serializable {
 		return isPieceCompleted;
 	}
 
+	// To support directory, so discard this function.
 	// @ return Slices of current piece are completed?
 	// TODO: VERY IMPORTANT!
 	// Previou verion we got IOException.
@@ -325,6 +326,7 @@ public class FileMetadata implements Serializable {
 	}
 	*/
 	
+	// To support directory, so discard this function.
 	// In production, we should not open then close a file for writing/reading a slice.
 	// The file should be always open for random access.
 	/*
