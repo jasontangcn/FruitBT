@@ -55,8 +55,8 @@ public class PeerConnection {
 
 	private ArrayBlockingQueue<PeerMessage> messagesToSend = new ArrayBlockingQueue<PeerMessage>(1024, true);
 
-	private long timeLastRead;
-	private long timeLastWrite;
+	private long timeLastRead = System.currentTimeMillis();
+	private long timeLastWrite = System.currentTimeMillis();
 
 	// TODO: XXXX
 	// Batch send/receive may not work well because of unexpected communication.
@@ -161,7 +161,7 @@ public class PeerConnection {
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 
-				this.connectionId = this.peer.getInfoHash() + "-" + UUID.randomUUID().toString();
+				this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 
 				System.out.println("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
@@ -175,7 +175,7 @@ public class PeerConnection {
 		}
 
 		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
-			System.out.println("Status : " + this.state + ", reading message.");
+			//System.out.println("Status : " + this.state + ", reading message.");
 			PeerMessage message = this.messageHandler.readMessage();
 			if (message == null)
 				return;
@@ -343,7 +343,7 @@ public class PeerConnection {
 				// It should be incoming connection.
 				this.state = State.IN_EXCHANGE_BITFIELD_COMPLETED;
 
-				this.connectionId = this.peer.getInfoHash() + "-" + UUID.randomUUID().toString();
+				this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				System.out.println("Status : " + this.state + ", completed writing bitfield message to peer.");
@@ -453,7 +453,7 @@ public class PeerConnection {
 			}
 			messageHandler.writeMessage();
 			if (messageHandler.isSendingInProgress()) {
-				System.out.println("Status : " + this.state + ", only partialessage was written to peer.");
+				System.out.println("Status : " + this.state + ", only partial message was written to peer.");
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 				} catch (IOException e) {

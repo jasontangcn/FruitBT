@@ -169,15 +169,15 @@ public class PeerConnectionManager implements Runnable {
 				if (Thread.interrupted())
 					break;
 
-				System.out.println("Acquiring selector lock.");
+				//System.out.println("Acquiring selector lock.");
 				selectorLock.lock();
-				System.out.println("Acquired selector lock.");
+				//System.out.println("Acquired selector lock.");
 				selectorLock.unlock();
 
-				System.out.println("Selecting keys.");
+				//System.out.println("Selecting keys.");
 				// Select blocks until at least one key is selected.
 				selector.select(); // IOException, ClosedSelectorException
-				System.out.println("Some keys got selected.");
+				//System.out.println("Some keys got selected.");
 
 				Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
 				while (selectedKeys.hasNext()) {
@@ -209,7 +209,7 @@ public class PeerConnectionManager implements Runnable {
 							e.printStackTrace();
 						}
 					} else if (key.isReadable()) {
-						System.out.println("[In Selector] Ready to read.");
+						//System.out.println("[In Selector] Ready to read.");
 						((PeerConnection) key.attachment()).readMessage();
 					} else if (key.isWritable()) {
 						System.out.println("[In Selector] Ready to write.");
@@ -343,7 +343,11 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	private String interestOps(int ops) {
-		if (ops == SelectionKey.OP_READ) {
+		if (ops == SelectionKey.OP_ACCEPT) {
+			return "OP_ACCEPT";
+		}else if (ops == SelectionKey.OP_CONNECT) {
+			return "OP_CONNECT";
+		}else if (ops == SelectionKey.OP_READ) {
 			return "OP_READ";
 		} else if (ops == SelectionKey.OP_WRITE) {
 			return "OP_WRITE";

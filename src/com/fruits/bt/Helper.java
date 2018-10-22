@@ -97,13 +97,13 @@ public class Helper {
 		}
 	}
 
-	public static boolean isInterested(Bitmap p, Bitmap k) {
+	public static boolean isInterested(Bitmap a, Bitmap b) {
 		System.out
-				.println("p-> " + p + " [length = " + p.length() + ", size = " + p.size() + "], p-> " + k + " [length = " + k.length() + ", size = " + k.size() + "].");
+				.println("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
 		// TODO: validate parameters.
 		boolean interested = false;
-		for (int i = 0; i < k.size(); i++) {
-			if (k.get(i) && !p.get(i)) {
+		for (int i = 0; i < b.size(); i++) {
+			if (b.get(i) && !a.get(i)) {
 				interested = true;
 				break;
 			}

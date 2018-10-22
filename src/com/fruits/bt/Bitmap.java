@@ -23,6 +23,7 @@ public class Bitmap {
 	}
 
 	public Bitmap(byte[] bits) {
+		//System.out.println("raw bitfield from peer: [" + Utils.bytes2HexString(bits) + "]");
 		if (bits == null || bits.length == 0)
 			throw new NullPointerException("bits can not be null or zero length.");
 		this.bits = bits;
@@ -41,15 +42,15 @@ public class Bitmap {
 	}
 
 	public void set(int index) {
-		this.bits[index >> 3] |= (1 << (index & 0x07));
+		this.bits[index >> 3] |= (1 << (7 - (index & 0x07)));
 	}
 
 	public boolean get(int index) {
-		return (this.bits[index >> 3] & (1 << (index & 0x07))) != 0;
+		return (this.bits[index >> 3] & (1 << (7 - (index & 0x07)))) != 0;
 	}
 
 	public void clear(int index) {
-		this.bits[index >> 3] &= ~(1 << (index & 0x07));
+		this.bits[index >> 3] &= ~(1 << (7 - (index & 0x07)));
 	}
 
 	public byte[] toByteArray() {
@@ -63,6 +64,7 @@ public class Bitmap {
 	}
 
 	public String toString() {
+		System.out.println("raw data for bitmap: [" + Utils.bytes2HexString(this.bits) + "]");
 		StringBuilder sb = new StringBuilder();
 		sb.append("[(length=").append(this.length).append(")(");
 		int n;
@@ -81,4 +83,12 @@ public class Bitmap {
 		sb.append(")]");
 		return sb.toString();
 	}
+	
+	public static void main(String[] args) {
+		byte[] bitfield = Utils.hexStringToBytes("0ffffffffffffffffffff8");
+		Bitmap bitmap = new Bitmap(bitfield);
+		System.out.println(bitmap);
+	}
 }
+
+

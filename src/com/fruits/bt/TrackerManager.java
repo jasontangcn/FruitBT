@@ -140,7 +140,7 @@ public class TrackerManager {
 				InetAddress peerIP = InetAddress.getByAddress(ip);
 				ByteArrayInputStream bis = new ByteArrayInputStream(port);
 				DataInputStream dis = new DataInputStream(bis);
-				int peerPort = dis.read();
+				int peerPort = dis.readUnsignedShort();
 
 				System.out.println(peerIP.getHostAddress());
 				System.out.println(peerPort);
@@ -206,7 +206,7 @@ public class TrackerManager {
 		}
 		String peerId = "";
 		try {
-			infoHash = URLEncoder.encode(new String(Client.PEER_ID, "ISO-8859-1"), "ISO-8859-1");
+			peerId = URLEncoder.encode(new String(Client.PEER_ID, "ISO-8859-1"), "ISO-8859-1");
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
@@ -218,12 +218,16 @@ public class TrackerManager {
 
 		long left = seed.getRealLength() - downloaded;
 		StringBuffer sb = new StringBuffer();
-		sb.append(seed.getAnnounce()).append("?").append(TrackerManager.PARAM_INFO_HASH).append("=").append(infoHash).append("&")
-				.append(TrackerManager.PARAM_PEER_ID).append("=").append(peerId).append("&").append(TrackerManager.PARAM_UPLOADED).append("=").append(uploaded)
-				.append("&").append(TrackerManager.PARAM_DOWNLOADED).append("=").append(downloaded).append("&").append(TrackerManager.PARAM_LEFT).append("=")
-				.append(left).append("&").append(TrackerManager.PARAM_COMPACT).append("=").append(TrackerManager.COMPACT).append("&")
-				.append(TrackerManager.PARAM_NUM_WANT).append("=").append(TrackerManager.NUM_WANT).append("&").append(TrackerManager.PARAM_PORT).append("=")
-				.append(Client.LISTENER_PORT).append("&").append(TrackerManager.PARAM_EVENT).append("=");
+		sb.append(seed.getAnnounce()).append("?")
+		    .append(TrackerManager.PARAM_INFO_HASH).append("=").append(infoHash).append("&")
+				.append(TrackerManager.PARAM_PEER_ID).append("=").append(peerId).append("&")
+				.append(TrackerManager.PARAM_UPLOADED).append("=").append(uploaded).append("&")
+				.append(TrackerManager.PARAM_DOWNLOADED).append("=").append(downloaded).append("&")
+				.append(TrackerManager.PARAM_LEFT).append("=").append(left).append("&")
+				.append(TrackerManager.PARAM_COMPACT).append("=").append(TrackerManager.COMPACT).append("&")
+				.append(TrackerManager.PARAM_NUM_WANT).append("=").append(TrackerManager.NUM_WANT).append("&")
+				.append(TrackerManager.PARAM_PORT).append("=").append(Client.LISTENER_PORT).append("&")
+				.append(TrackerManager.PARAM_EVENT).append("=");
 
 		String status = "";
 		DownloadState downloadStatus = task.getState();

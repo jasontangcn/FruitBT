@@ -125,6 +125,7 @@ public class DownloadManager {
 		System.out.println("New task was added, task length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
+		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 	}
 
 	public DownloadTask getDownloadTask(String infoHash) {
@@ -214,7 +215,7 @@ public class DownloadManager {
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_FILE));
 		oos.writeObject(this.downloadTasks);
 		oos.close();
-		System.out.println("downloadTasks : " + this.downloadTasks + ".");
+		//System.out.println("downloadTasks : " + this.downloadTasks + ".");
 	}
 
 	public Bitmap getBitfield(String infoHash) {

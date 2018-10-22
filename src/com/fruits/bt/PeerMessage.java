@@ -371,6 +371,10 @@ public abstract class PeerMessage {
 			this.length = length;
 		}
 
+		public String toString() {
+			return "RequestMessage: index = " + this.index + ", begin = " + begin + ", length = " + this.length;
+		}
+		
 		public ByteBuffer encode() {
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + RequestMessage.BASE_SIZE);
 			messageBytes.putInt(RequestMessage.BASE_SIZE);
@@ -432,6 +436,10 @@ public abstract class PeerMessage {
 			this.block = block;
 		}
 
+		public String toString() {
+			return "PieceMessage: index = " + this.index + ", begin = " + begin;
+		}
+		
 		public ByteBuffer encode() {
 			byte[] bytes = this.block.array();
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + PieceMessage.BASE_SIZE + bytes.length);

@@ -57,7 +57,7 @@ public class TorrentSeed implements Serializable {
 	private int pvt;
 	// TODO: Change the default slice length to 16K.
 	// To make the demo simpler, I use 16K * 4 as the default slice length.
-	private int sliceLength = 16 * 1024 * 4; // It should = DEFAULT_SLICE_LENGTH;
+	private int sliceLength = 16 * 1024; // It should = DEFAULT_SLICE_LENGTH;
 
 	private String name;
 	//file length
@@ -361,7 +361,7 @@ public class TorrentSeed implements Serializable {
 			seed.setFileInfos(fileInfos);
 		}
 
-		System.out.println("It's a directory : num of files: " + fileInfos.size() + ".");
+		System.out.println("It's a directory? : num of files: " + fileInfos.size() + ".");
 
 		try {
 			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());

@@ -102,16 +102,20 @@ public class PiecePicker {
 
 	// Remove connection that is choked or closed.
 	public void removeConnection(PeerConnection connection) {
-		System.out.println("PiecePicker: removed a connection : " + connection.getConnectionId() + ".");
+		System.out.println("PiecePicker: removing connection : " + connection.getConnectionId() + ".");
 		// TODO: Override the equals of PeerConnection then use API List.remove to remove the connection.
 		Iterator<PeerConnection> iterator = this.connections.iterator();
+		boolean found = false;
 		while (iterator.hasNext()) {
 			PeerConnection conn = iterator.next();
 			if (conn.getConnectionId() == connection.getConnectionId()) {
 				iterator.remove();
+				found = true;
 				break;
 			}
 		}
+		if(!found) // AliveManager closed connection when the status in OUT_BITFILED_SENT, looks connection is not added to PiecePicker yet.
+			return;
 
 		String infoHash = connection.getSelf().getInfoHashString();
 		Bitmap peerBitfield = connection.getPeer().getBitfield();
@@ -184,9 +188,11 @@ public class PiecePicker {
 
 			int index = -1;
 			// Random
-			if (percentCompleted < 0.3) {
+			if (percentCompleted > 5) {
+				System.out.println("Using 'random pick' strategy.");
 				index = indexes.get(random.nextInt(indexes.size()));
-			} else if (percentCompleted < 0.9) { // Rarest First
+			} else if (percentCompleted > 5) { // Rarest First
+				System.out.println("Using 'Rarest First' strategy.");
 				Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 				Comparator<Map.Entry<Integer, Integer>> comparator = new Comparator<Map.Entry<Integer, Integer>>() {
 					@Override
@@ -205,6 +211,7 @@ public class PiecePicker {
 					}
 				}
 			} else { /* < 1 , sequential */
+				System.out.println("Using sequential strategy.");
 				index = indexes.get(0);
 			}
 
