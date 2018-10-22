@@ -83,7 +83,6 @@ public class Client {
 			}
 		}); // connectionManager is run in a new thread.
 
-		//downloadManager.addDownloadTask("doc\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.addDownloadTask("D:\\TorrentDownload2\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
 	}

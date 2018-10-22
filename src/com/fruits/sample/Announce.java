@@ -56,8 +56,9 @@ public class Announce {
 			//64 + 32 +16 + 4 +2 = 118
 			//%B3 %C8 %F8 %E5 %0D %3F %3Fp %11W %F2 %C2Q~ %EExX %8BH %F2
 
+			//String peer_id = URLEncoder.encode(new String(Utils.hexStringToBytes("5FAC36EF8B2E2D0F1B4D5FAC36EF8B2E2D0F1B4D"), "ISO-8859-1"), "ISO-8859-1");
 			String peer_id = URLEncoder.encode(new String(Utils.hexStringToBytes("5FAC36EF8B2E2D0F1B4D5FAC36EF8B2E2D0F1B4D"), "ISO-8859-1"), "ISO-8859-1");
-
+			
 			System.out.println(info_hash);
 			System.out.println(peer_id);
 

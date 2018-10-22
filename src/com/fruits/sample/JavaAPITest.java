@@ -1,11 +1,30 @@
 package com.fruits.sample;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class JavaAPITest {
 
+	public static enum EnumState implements Serializable {
+		PENDING(1), STARTED(2), PAUSED(3), STOPPED(4), COMPLETED(5);
+
+		private int stateId;
+
+		EnumState(int stateId) {
+			this.stateId = stateId;
+		}
+		
+		public int getStateId() {
+			return this.stateId;
+		}
+
+	}
+	
 	public static void main(String[] args) throws Exception {
+
+		System.out.println(EnumState.PENDING);
+		
 		/*
 		BitSet bitset = new BitSet(85);
 		System.out.println(bitset.toByteArray());

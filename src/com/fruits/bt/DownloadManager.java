@@ -34,7 +34,7 @@ public class DownloadManager {
 	// 1. Start listener.
 	// 2. Accept connect from peers.
 	// 3. Upload slices to peers. 
-	private TrackerManager trackerManager = new TrackerManager();
+	private TrackerManager trackerManager = new TrackerManager(this);
 
 	private PiecePicker piecePicker;
 	private final PeerConnectionManager connectionManager;

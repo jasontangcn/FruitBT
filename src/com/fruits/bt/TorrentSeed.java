@@ -157,6 +157,18 @@ public class TorrentSeed implements Serializable {
 		this.length = length;
 	}
 
+	public long getRealLength() {
+		if(this.isDirectory()) {
+			long length = 0;
+			for(FileInfo fileInfo : this.fileInfos) {
+				length += fileInfo.getLength();
+			}
+			return length;
+		}else {
+			return this.getLength();
+		}
+	}
+	
 	public String getMD5sum() {
 		return md5sum;
 	}
