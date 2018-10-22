@@ -14,3 +14,20 @@
 2. Multi Threads to read messages? handle messages/send messages?
 3. Logging
 4.
+
+2018-10-23
+==========
+1. AliveManager close the session but a seed is download successfully, why?
+2. Random strategy, Rarest First, Sequential strategy works fine?
+3. Tracker response compatibility.
+   e.g. BT Tracker return a plain text instead of BCode string.
+4. FruitBT download file from BT seed.
+   Other BT client download from FruitBT.
+   FruitBT download file from another FruitBT.
+   
+   Make sure this cases works fine.
+
+5. AliveManager close the connection->
+   PeerConnecitonManager.readMessage-> PiecePicker.removeConnection throws NullPointerException,
+   so the PeerMessageManager throws exception to Client, so fail the sytem.
+   
