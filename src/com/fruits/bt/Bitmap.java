@@ -10,10 +10,11 @@ import java.util.Arrays;
 
 public class Bitmap {
 	private final byte[] bits;
-	private int length = -1; // This used a 'real length'.
-														// size is used a real length of internal byte array.
-														// I can not expand automatically, so length must be > 1.
-														// otherwise if the bits.length == 0, it does not make sense.
+	// This used a 'real length'.
+	// size is used a real length of internal byte array.
+	// I can not expand automatically, so length must be > 1.
+	// otherwise if the bits.length == 0, it does not make sense.
+	private int length = -1; 
 
 	public Bitmap(int length) {
 		if (length < 0)
@@ -82,12 +83,6 @@ public class Bitmap {
 
 		sb.append(")]");
 		return sb.toString();
-	}
-	
-	public static void main(String[] args) {
-		byte[] bitfield = Utils.hexStringToBytes("0ffffffffffffffffffff8");
-		Bitmap bitmap = new Bitmap(bitfield);
-		System.out.println(bitmap);
 	}
 }
 

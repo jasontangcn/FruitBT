@@ -30,4 +30,5 @@
 5. AliveManager close the connection->
    PeerConnecitonManager.readMessage-> PiecePicker.removeConnection throws NullPointerException,
    so the PeerMessageManager throws exception to Client, so fail the sytem.
+6. JUnit to test APIs.
    
