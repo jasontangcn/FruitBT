@@ -30,13 +30,13 @@ public class HandshakeMessage {
 		return new HandshakeMessage(infoHash, peerId);
 	}
 
-	public static ByteBuffer encode(HandshakeMessage handshakeMessage) {
+	public static ByteBuffer encode(HandshakeMessage message) {
 		ByteBuffer messageBytes = ByteBuffer.allocate(HandshakeMessage.HANDSHAKE_MESSAGE_LENGTH);
-		messageBytes.put(handshakeMessage.getPstrLen());
-		messageBytes.put(handshakeMessage.getPstr());
-		messageBytes.put(handshakeMessage.getReserved());
-		messageBytes.put(handshakeMessage.getInfoHash());
-		messageBytes.put(handshakeMessage.getPeerId());
+		messageBytes.put(message.getPstrLen());
+		messageBytes.put(message.getPstr());
+		messageBytes.put(message.getReserved());
+		messageBytes.put(message.getInfoHash());
+		messageBytes.put(message.getPeerId());
 		messageBytes.flip();
 		return messageBytes;
 	}

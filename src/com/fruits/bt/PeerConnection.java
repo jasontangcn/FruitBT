@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +29,7 @@ import com.fruits.bt.PeerMessage.UnchokeMessage;
 public class PeerConnection {
 	static final Logger logger = LoggerFactory.getLogger(PeerConnection.class);
 	
+	// TODO:
 	public enum State {
 		UNDEFINED(-1), OUT_CONNECTED(0), OUT_HANDSHAKE_MESSAGE_SENT(1), OUT_HANDSHAKE_MESSAGE_RECEIVED(2), OUT_BITFIELD_SENT(3), OUT_EXCHANGE_BITFIELD_COMPLETED(4),
 		IN_ACCEPTED(5), IN_HANDSHAKE_MESSAGE_RECEIVED(6), IN_HANDSHAKE_MESSAGE_SENT(7), IN_BITFIELD_RECEIVED(8), IN_EXCHANGE_BITFIELD_COMPLETED(9);
@@ -53,15 +55,15 @@ public class PeerConnection {
 	private Peer peer;
 
 	// Initial status.
-	private boolean choking = true; // choking peer
-	private boolean interesting = false; // interested in peer
-	private boolean choked = true; // choked by peer
-	private boolean interested = false; // peer interested in me
+	private volatile boolean choking = true; // choking peer
+	private volatile boolean interesting = false; // interested in peer
+	private volatile boolean choked = true; // choked by peer
+	private volatile boolean interested = false; // peer interested in me
 
 	private ArrayBlockingQueue<PeerMessage> messagesToSend = new ArrayBlockingQueue<PeerMessage>(1024, true);
 
-	private long timeLastRead = System.currentTimeMillis();
-	private long timeLastWrite = System.currentTimeMillis();
+	private volatile long timeLastRead = System.currentTimeMillis();
+	private volatile long timeLastWrite = System.currentTimeMillis();
 
 	// TODO: XXXX
 	// Batch send/receive may not work well because of unexpected communication.
@@ -76,11 +78,10 @@ public class PeerConnection {
 	}
 
 	public void readMessage() {
-		// ACCEPTED -> It's an incoming connection.
 		if (this.state == State.IN_ACCEPTED) {
-			logger.debug("Status : " + this.state + ", reading handshake message.");
+			logger.debug("Status : {}, reading handshake message.", this.state);
 			HandshakeMessage message = this.handshakeHandler.readMessage();
-			if (message == null)
+			if (message == null) // Did not get a complete HandshakeMessage.
 				return;
 
 			byte[] infoHash = message.getInfoHash();
@@ -93,11 +94,9 @@ public class PeerConnection {
 			//TODO: DownloadManager should not appear here?
 			this.self.setInfoHash(infoHash);
 			this.state = State.IN_HANDSHAKE_MESSAGE_RECEIVED;
-			logger.debug("Status : " + this.state + ", received handshake message [" + message + "].");
-		}
-
-		if (this.state == State.IN_HANDSHAKE_MESSAGE_RECEIVED) {
-			writeMessage();
+			logger.debug("Status : {}, received handshake message [{}].", this.state, message);
+			
+			writeMessage(); // Next read status must be IN_HANDSHAKE_MESSAGE_SENT.
 		}
 
 		if (this.state == State.IN_HANDSHAKE_MESSAGE_SENT) {
@@ -105,10 +104,9 @@ public class PeerConnection {
 			PeerMessage message = this.messageHandler.readMessage();
 			if (message == null)
 				return;
-			if (message instanceof PeerMessage.BitfieldMessage) {
-				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
+			if (message instanceof BitfieldMessage) {
+				Bitmap peerBitfield = ((BitfieldMessage) message).getBitfield();
 
-				// TODO: Set the bitfield of this.peer.
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHashString());
@@ -119,18 +117,15 @@ public class PeerConnection {
 
 				this.state = State.IN_BITFIELD_RECEIVED;
 				logger.debug("Status : " + this.state + ", received bitfield message [" + message + "].");
+				
+				writeMessage();
 			}
-		}
-
-		if (this.state == State.IN_BITFIELD_RECEIVED) {
-			writeMessage();
 		}
 
 		if (this.state == State.OUT_CONNECTED) {
 			writeMessage();
 		}
 
-		// It must be an outgoing connection.
 		if (this.state == State.OUT_HANDSHAKE_MESSAGE_SENT) {
 			logger.debug("Status : " + this.state + ", reading handshake message.");
 			HandshakeMessage message = handshakeHandler.readMessage();
@@ -140,22 +135,17 @@ public class PeerConnection {
 			this.peer.setInfoHash(message.getInfoHash());
 			this.state = State.OUT_HANDSHAKE_MESSAGE_RECEIVED;
 			logger.debug("Status : " + this.state + ", received handshake message [" + message + "].");
-		}
-
-		if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
+			
 			writeMessage();
 		}
-		//TODO: XXXX
-		//If it's a outgoing connection, this status is not enough,
-		//because the peer may not send back the bitfield yet.
+
 		if (this.state == State.OUT_BITFIELD_SENT) {
 			logger.debug("Status : " + this.state + ", reading bitfield message.");
 			PeerMessage message = this.messageHandler.readMessage();
 			if (message == null)
 				return;
-			if (message instanceof PeerMessage.BitfieldMessage) {
-				// TODO: Set the bitfield of this.peer.
-				Bitmap peerBitfield = ((PeerMessage.BitfieldMessage) message).getBitfield();
+			if (message instanceof BitfieldMessage) {
+				Bitmap peerBitfield = ((BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHashString());
@@ -165,7 +155,8 @@ public class PeerConnection {
 
 				this.state = State.OUT_EXCHANGE_BITFIELD_COMPLETED;
 
-				this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
+				//this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
+				this.connectionId = UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 
 				logger.debug("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
@@ -189,7 +180,7 @@ public class PeerConnection {
 
 			this.timeLastRead = System.currentTimeMillis();
 
-			logger.debug("PeerConnection->readMessage: I got a message from peer [" + message + "].");
+			logger.debug("PeerConnection->readMessage: Got a message from peer [" + message + "].");
 
 			if (message instanceof KeepAliveMessage) {
 			} else if (message instanceof ChokeMessage) {
@@ -202,17 +193,11 @@ public class PeerConnection {
 						it.remove();
 					}
 				}
-
 				this.downloadManager.getPiecePicker().removeConnection(this);
-				/*
-				this.indexRequesting = -1;
-				this.requestsSent = 0;
-				this.piecesReceived = 0;
-				*/
 			} else if (message instanceof UnchokeMessage) {
 				this.choked = false;
 				this.downloadManager.getPiecePicker().addConnection(this);
-				logger.debug("PeerConnection->readMessage: I got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
+				logger.debug("PeerConnection->readMessage: Got a UnchokeMessage and this.interesting is : " + this.interesting + ".");
 				if (this.interesting) {
 					this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
@@ -221,11 +206,11 @@ public class PeerConnection {
 				// TODO: If a peer is interested in me, I will unchoke him?
 			} else if (message instanceof NotInterestedMessage) {
 				this.interested = false;
-				// TODO: Cancel the responses for the peer.
+				// TODO: Cancel the piece messages for the peer, any more to do?
 				Iterator<PeerMessage> iterator = this.messagesToSend.iterator();
 				while (iterator.hasNext()) {
-					PeerMessage m = iterator.next();
-					if (m instanceof PieceMessage) {
+					PeerMessage msg = iterator.next();
+					if (msg instanceof PieceMessage) {
 						iterator.remove();
 					}
 				}
@@ -239,7 +224,7 @@ public class PeerConnection {
 					this.interesting = interested;
 					if (interested) {
 						interestedNow = true;
-						PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
+						InterestedMessage interestedMessage = new InterestedMessage();
 						this.addMessageToSend(interestedMessage);
 					}
 				}
@@ -247,11 +232,13 @@ public class PeerConnection {
 				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHashString(), haveMessage.getPieceIndex());
 				// TODO: XXXX
 				if (!this.choked && interestedNow) {
+					// TODO: isBatchRequestInProgress?
 					if (!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHashString(), connectionId))
 						this.downloadManager.getPiecePicker().requestMoreSlices(this);
 				}
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
+				logger.warn("Status : " + this.state + ", in this status client should not receive bitfield message.");
 			} else if (message instanceof RequestMessage) {
 				logger.debug("PeerConnection->readMessage: Got a RequestMessage " + message + ".");
 
@@ -265,9 +252,7 @@ public class PeerConnection {
 				}
 			} else if (message instanceof PieceMessage) {
 				PieceMessage piece = (PieceMessage) message;
-				// Is it OK to use .limit() to get the length of the ByteBuffer?
-				// TODO: XXXX
-				// Silent but the writing may fail.
+				// TODO: Silent but the writing may fail.
 				this.downloadManager.writeSlice(self.getInfoHashString(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
 				this.downloadManager.getPiecePicker().sliceReceived(this);
 				logger.debug("PeerConnection->readMessage: Got a PieceMessage " + message + ".");
@@ -277,15 +262,14 @@ public class PeerConnection {
 				// TODO: Check the queue of received messages and the queue of outgoing messages, if it's there remove it from the queue.
 				Iterator<PeerMessage> iterator = this.messagesToSend.iterator();
 				while (iterator.hasNext()) {
-					PeerMessage m = iterator.next();
-					if (m instanceof PieceMessage) {
-						PieceMessage pieceMessage = (PieceMessage) m;
+					PeerMessage msg = iterator.next();
+					if (msg instanceof PieceMessage) {
+						PieceMessage pieceMessage = (PieceMessage) msg;
 						if ((pieceMessage.getIndex() == cancelMessage.getIndex()) && (pieceMessage.getBegin() == cancelMessage.getBegin())) {
 							iterator.remove();
 						}
 					}
 				}
-
 			} else if (message instanceof PortMessage) {
 
 			}
@@ -324,13 +308,11 @@ public class PeerConnection {
 				}
 				logger.debug("Status : " + this.state + ", completed writing handshake message to peer.");
 			}
-		}
-
-		if (this.state == State.IN_BITFIELD_RECEIVED) {
+		}else if (this.state == State.IN_BITFIELD_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
 				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				logger.debug("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
-				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
+				BitfieldMessage bitfieldMessage = new BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
 			} else {
 				logger.debug("Status : " + this.state + ", writing remaining part of bitfield message to peer.");
@@ -350,22 +332,21 @@ public class PeerConnection {
 				// It should be incoming connection.
 				this.state = State.IN_EXCHANGE_BITFIELD_COMPLETED;
 
-				this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
+				//this.connectionId = Utils.bytes2HexString(this.peer.getInfoHash()) + "-" + UUID.randomUUID().toString();
+				this.connectionId = UUID.randomUUID().toString();
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				logger.debug("Status : " + this.state + ", completed writing bitfield message to peer.");
 				logger.info("Completed handshake with peer.");
 				// TODO: Shall we put this message in the head of the queue?
 				if (this.interesting) {
-					PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
+					InterestedMessage interestedMessage = new InterestedMessage();
 					this.addMessageToSend(interestedMessage);
 				}
 				// Send the messages that are put in queue during handshaking and bitfield exchanging.
 				startSendMessages();
 			}
-		}
-
-		if (this.state == State.OUT_CONNECTED) {
+		}else if (this.state == State.OUT_CONNECTED) {
 			//TODO: Use a while to ensure the message is totally written to peer.
 			if (!handshakeHandler.isSendingInProgress()) {
 				HandshakeMessage handshakeMessage = new HandshakeMessage(self.getInfoHash(), self.getPeerId());
@@ -396,13 +377,11 @@ public class PeerConnection {
 				}
 				logger.debug("Status : " + this.state + ", completed writing handshake message to peer.");
 			}
-		}
-
-		if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
+		}else if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
 				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				logger.debug("Status : " + this.state + ", writing bitfield message to peer [" + bitfield + "].");
-				BitfieldMessage bitfieldMessage = new PeerMessage.BitfieldMessage(bitfield);
+				BitfieldMessage bitfieldMessage = new BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
 			} else {
 				logger.debug("Status : " + this.state + ", writing remaining part of bitfield message to peer.");
@@ -422,7 +401,7 @@ public class PeerConnection {
 			} else {
 				this.state = State.OUT_BITFIELD_SENT;
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
+					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this); // Overwrite the OP_WRITE. 
 				} catch (IOException e) {
 					e.printStackTrace();
 					this.selfClose();
@@ -430,10 +409,6 @@ public class PeerConnection {
 				}
 				logger.debug("Status : " + this.state + ", completed writing bitfield message to peer.");
 			}
-		}
-
-		if (isHandshakeCompleted()) {
-			this.startSendMessages();
 		}
 	}
 
@@ -443,15 +418,15 @@ public class PeerConnection {
 			if (!messageHandler.isSendingInProgress()) { // Nothing sent yet or completed sending a message.
 				PeerMessage message = this.messagesToSend.poll();
 				if (message == null) {
+					logger.debug("Status : " + this.state + ", there is no message in queue, unregistered OP_WRITE for this channel.");
 					try {
 						this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
+						break;
 					} catch (IOException e) {
 						e.printStackTrace();
 						this.selfClose();
 						return;
 					}
-					logger.debug("Status : " + this.state + ", there is no message in queue, unregistered OP_WRITE for this channel.");
-					break;
 				}
 				logger.debug("Got a message from queue.");
 				messageHandler.setMessageToSend(message);
@@ -463,12 +438,12 @@ public class PeerConnection {
 				logger.debug("Status : " + this.state + ", only part of the message was written to peer.");
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
+					break;
 				} catch (IOException e) {
 					e.printStackTrace();
 					this.selfClose();
 					return;
 				}
-				break;
 			} else {
 				this.timeLastWrite = System.currentTimeMillis();
 				logger.debug("Status : " + this.state + ", completed writing a message to peer.");
@@ -477,18 +452,9 @@ public class PeerConnection {
 	}
 
 	public void addMessageToSend(PeerMessage message) {
-		// TODO: Handling exceptions.
-		try {
-			this.messagesToSend.put(message);
-		} catch (InterruptedException e) {
-			logger.debug("Status : " + this.state + ", failed to add outgoing message to queue : " + message + ".");
-			e.printStackTrace();
-		}
-		logger.debug("Status : " + this.state + ", an outgoing message was added to queue : " + message + ".");
-
-		if (isHandshakeCompleted()) {
-			this.startSendMessages();
-		}
+		List<PeerMessage> messages = new ArrayList<PeerMessage>();
+		messages.add(message);
+		this.addMessageToSend(messages);
 	}
 
 	public void addMessageToSend(List<PeerMessage> messages) {
@@ -498,7 +464,7 @@ public class PeerConnection {
 				this.messagesToSend.put(message);
 			}
 		} catch (InterruptedException e) {
-			logger.debug("Status : " + this.state + ", failed to add outgoing messages to queue : " + messages + ".");
+			logger.warn("Status : " + this.state + ", failed to add outgoing messages to queue : " + messages + ".");
 			e.printStackTrace();
 		}
 		logger.debug("Status : " + this.state + ", outgoing messages were added to queue : " + messages + ".");

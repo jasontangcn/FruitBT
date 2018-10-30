@@ -200,6 +200,12 @@ public class PeerConnectionManager implements Runnable {
 							Peer self = new Peer();
 							// TODO: peerId managing.
 							self.setPeerId(Client.PEER_ID);
+							/*
+							 * If there is a security manager set, its checkConnect method is called with the local address 
+							 * and -1 as its arguments to see if the operation is allowed.
+							 * If the operation is not allowed, 
+							 * a SocketAddress representing the loopback address and the local port of the channel's socket is returned.
+							 */
 							self.setAddress((InetSocketAddress) socketChannel.getLocalAddress()); // IOException, ClosedChannelException
 							// self.setLocal((InetSocketAddress)serverSocket.getLocalAddress());
 							conn.setSelf(self);
