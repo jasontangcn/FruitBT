@@ -8,11 +8,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Random;
 
 import com.fruits.bt.PeerMessage.PieceMessage;
 
 public class PiecePicker {
+	static final Logger logger = LoggerFactory.getLogger(PiecePicker.class);
+	
 	public static final int BATCH_REQUEST_SIZE = 3;
 
 	private final DownloadManager downloadManager;

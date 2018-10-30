@@ -20,6 +20,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fruits.bt.PeerConnection.State;
 import com.fruits.bt.PeerMessage.ChokeMessage;
 import com.fruits.bt.PeerMessage.HaveMessage;
@@ -47,17 +50,20 @@ import com.fruits.bt.PeerMessage.UnchokeMessage;
  * 
  */
 public class PeerConnectionManager implements Runnable {
+	static final Logger logger = LoggerFactory.getLogger(PeerConnectionManager.class);
+	
 	private volatile boolean stopped = false;
-	private Thread connectionManagerThread = null;
-
-	private InetSocketAddress listenEndpoint;
+	
+	private final InetSocketAddress listenEndpoint;
+	private final DownloadManager downloadManager;
+	private final Thread connectionManagerThread;
+	
 	private Selector selector;
 	private ServerSocketChannel serverChannel; // For accepting incoming connections from peers.
 	// TODO: VERY IMPORTANT!
 	// This lock is based on thread.
 	private final ReentrantLock selectorLock = new ReentrantLock();
 
-	private DownloadManager downloadManager;
 	// info_hash -> PeerConnection
 	// Incoming or outgoing connection is added to it after bitfield exchanging completed.
 	private Map<String, List<PeerConnection>> peerConnections = new HashMap<String, List<PeerConnection>>();
@@ -65,28 +71,35 @@ public class PeerConnectionManager implements Runnable {
 	private ScheduledExecutorService choker = Executors.newSingleThreadScheduledExecutor();
 	private ScheduledExecutorService aliveManager = Executors.newSingleThreadScheduledExecutor();
 
-	public PeerConnectionManager(InetSocketAddress listenEndpoint) throws IOException {
+	public PeerConnectionManager(InetSocketAddress listenEndpoint, DownloadManager downloadManager, Thread.UncaughtExceptionHandler handler) throws IOException {
 		this.listenEndpoint = listenEndpoint;
+		this.downloadManager = downloadManager;
+		
+		this.connectionManagerThread = new Thread(this);
+		this.connectionManagerThread.setUncaughtExceptionHandler(handler);
+		this.connectionManagerThread.start();
+		
 		this.selector = Selector.open(); // This may throw IOException.
 
+		// Choke algorithm
 		choker.scheduleAtFixedRate(new Runnable() {
 			public void run() {
-				System.out.println("Choker is working.");
+				logger.debug("Choker is working.");
 
 				Iterator<String> iterator = peerConnections.keySet().iterator();
 				while (iterator.hasNext()) {
-					System.out.println("Calculating download/upload rate in the past 10 seconds.");
+					logger.debug("Calculating download&upload speed in the past 10 seconds.");
 					String infoHash = iterator.next();
 					List<PeerConnection> connections = peerConnections.get(infoHash);
 					for (PeerConnection conn : connections) {
 						conn.getMessageHandler().calculateReadWriteRate();
 					}
 					connections.sort(new Comparator<PeerConnection>() {
-						public int compare(PeerConnection p, PeerConnection k) {
-							if (p.isChoked() == k.isChoked()) {
-								return Float.compare(k.getMessageHandler().getReadRate(), p.getMessageHandler().getReadRate());
+						public int compare(PeerConnection obj1, PeerConnection obj2) {
+							if (obj1.isChoked() == obj2.isChoked()) {
+								return Float.compare(obj2.getMessageHandler().getReadRate(), obj1.getMessageHandler().getReadRate()); // download speed
 							} else {
-								if (p.isChoked()) {
+								if (obj1.isChoked()) {
 									return -1;
 								} else {
 									return 1;
@@ -95,14 +108,14 @@ public class PeerConnectionManager implements Runnable {
 						}
 					});
 					// Unchoke 4 peers based on download rate, and randomly pick one as 'optimistic unchoking'.
-					int n = connections.size();
+					int size = connections.size();
 
-					System.out.println("Choker-> connections size : " + n + " for " + infoHash + ".");
+					logger.debug("Choker-> connections size : " + size + " for " + infoHash + ".");
 
-					if (n > 5) {
+					if (size > 5) {
 						// TODO: do more research on Random to make sure we are using it correctly.
 						Random random = new Random();
-						int j = random.nextInt(n - 4);
+						int j = random.nextInt(size - 4);
 
 						if (j != 0) {
 							PeerConnection c = connections.get(j + 4);
@@ -115,16 +128,14 @@ public class PeerConnectionManager implements Runnable {
 						PeerConnection conn = connections.get(i);
 						if (i < 5) {
 							if (conn.isChoking()) {
-								System.out.println("Choker-> I am going to unchoke connection " + conn + ".");
+								logger.debug("Choker-> Unchoking peer " + conn + ".");
 								conn.setChoking(false);
-								UnchokeMessage unchokeMessage = new UnchokeMessage();
-								conn.addMessageToSend(unchokeMessage);
+								conn.addMessageToSend(new UnchokeMessage());
 							}
 						} else {
 							if (!conn.isChoking()) {
 								conn.setChoking(true);
-								ChokeMessage chokeMessage = new ChokeMessage();
-								conn.addMessageToSend(chokeMessage);
+								conn.addMessageToSend(new ChokeMessage());
 							}
 						}
 					}
@@ -134,7 +145,7 @@ public class PeerConnectionManager implements Runnable {
 
 		aliveManager.scheduleAtFixedRate(new Runnable() {
 			public void run() {
-				System.out.println("aliveManager is working.");
+				logger.debug("aliveManager is working.");
 				Iterator<String> iterator = peerConnections.keySet().iterator();
 				while (iterator.hasNext()) {
 					List<PeerConnection> connections = peerConnections.get(iterator.next());
@@ -146,38 +157,28 @@ public class PeerConnectionManager implements Runnable {
 		}, 0L, 45L, TimeUnit.SECONDS);
 	}
 
-	public void setDownloadManager(DownloadManager downloadManager) {
-		this.downloadManager = downloadManager;
-	}
-
-	public void start(Thread.UncaughtExceptionHandler handler) {
-		this.connectionManagerThread = new Thread(this);
-		this.connectionManagerThread.setUncaughtExceptionHandler(handler);
-		this.connectionManagerThread.start();
-	}
-
 	public void run() {
 		try {
 			this.serverChannel = ServerSocketChannel.open();
 			serverChannel.configureBlocking(false);
 			serverChannel.socket().setReuseAddress(true);
 			serverChannel.socket().bind(listenEndpoint);
-			System.out.println("Listening at : " + listenEndpoint + ".");
+			logger.debug("Listening at : " + listenEndpoint + ".");
 			serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
 			for (;;) {
 				if (Thread.interrupted())
 					break;
 
-				//System.out.println("Acquiring selector lock.");
+				//logger.debug("Acquiring selector lock.");
 				selectorLock.lock();
-				//System.out.println("Acquired selector lock.");
+				//logger.debug("Acquired selector lock.");
 				selectorLock.unlock();
 
-				//System.out.println("Selecting keys.");
+				//logger.debug("Selecting keys.");
 				// Select blocks until at least one key is selected.
 				selector.select(); // IOException, ClosedSelectorException
-				//System.out.println("Some keys got selected.");
+				//logger.debug("Some keys got selected.");
 
 				Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
 				while (selectedKeys.hasNext()) {
@@ -194,7 +195,7 @@ public class PeerConnectionManager implements Runnable {
 
 						try {
 							socketChannel.configureBlocking(false);
-							System.out.println("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
+							logger.debug("[In Selector] Accepted : " + socketChannel.socket().getRemoteSocketAddress());
 							PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager);
 							Peer self = new Peer();
 							// TODO: peerId managing.
@@ -209,18 +210,18 @@ public class PeerConnectionManager implements Runnable {
 							e.printStackTrace();
 						}
 					} else if (key.isReadable()) {
-						//System.out.println("[In Selector] Ready to read.");
+						//logger.debug("[In Selector] Ready to read.");
 						((PeerConnection) key.attachment()).readMessage();
 					} else if (key.isWritable()) {
-						System.out.println("[In Selector] Ready to write.");
+						logger.debug("[In Selector] Ready to write.");
 						((PeerConnection) key.attachment()).writeMessage();
 					} else if (key.isConnectable()) {
-						System.out.println("[In Selector] Ready to connect to remote peer.");
+						logger.debug("[In Selector] Ready to connect to remote peer.");
 						SocketChannel socketChannel = (SocketChannel) key.channel();
 						PeerConnection conn = (PeerConnection) key.attachment();
 						try {
 							if (socketChannel.finishConnect()) { // Lots of exceptions may be thrown.
-								System.out.println("[In Selector] Completed outgoing connecting to peer.");
+								logger.debug("[In Selector] Completed outgoing connecting to peer.");
 								conn.setState(State.OUT_CONNECTED);
 								conn.writeMessage();
 							}
@@ -252,7 +253,7 @@ public class PeerConnectionManager implements Runnable {
 			// socketChannel.bind(new InetSocketAddress("127.0.0.1", 6666));
 			// TODO: Randomly bind to local address.
 			socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
-			System.out.println("Connecting to peer: " + peer.getAddress() + ".");
+			logger.debug("Connecting to peer: " + peer.getAddress() + ".");
 			PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager);
 
 			self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
@@ -265,7 +266,7 @@ public class PeerConnectionManager implements Runnable {
 
 			return conn;
 		} catch (IOException e) {
-			System.out.println("Failed to create connection -> self : " + self + ", peer : " + peer + ".");
+			logger.debug("Failed to create connection -> self : " + self + ", peer : " + peer + ".");
 			e.printStackTrace();
 
 			Helper.closeChannel(socketChannel);
@@ -274,7 +275,7 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	public void stop() {
-		System.out.println("PeerConnectionManager is stopping.");
+		logger.debug("PeerConnectionManager is stopping.");
 
 		if (this.stopped)
 			return;
@@ -291,7 +292,7 @@ public class PeerConnectionManager implements Runnable {
 	// For outgoing connection: the connection may not finish connection yet.
 	// For incoming connection: the connection at least has been accepted.
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		System.out.println(
+		logger.debug(
 				"New connection is created, outgoing connection? [" + connection.isOutgoingConnection() + "], infoHash = " + infoHash + ", [" + connection + "]");
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
@@ -332,13 +333,13 @@ public class PeerConnectionManager implements Runnable {
 	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
-			System.out.println("Wakening the selector.");
+			logger.debug("Wakening the selector.");
 			selector.wakeup();
-			System.out.println("Registering channel : " + socketChannel + ", ops = " + interestOps(ops) + ", attachment = " + attachment + ".");
+			logger.debug("Registering channel : " + socketChannel + ", ops = " + interestOps(ops) + ", attachment = " + attachment + ".");
 			return socketChannel.register(selector, ops, attachment); // lots of exception may be thrown.
 		} finally {
 			selectorLock.unlock();
-			System.out.println("Completed registering channel.");
+			logger.debug("Completed registering channel.");
 		}
 	}
 

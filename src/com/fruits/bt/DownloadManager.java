@@ -13,6 +13,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fruits.bt.DownloadTask.DownloadState;
 
 /*
@@ -25,6 +28,7 @@ import com.fruits.bt.DownloadTask.DownloadState;
  */
 
 public class DownloadManager {
+	static final Logger logger = LoggerFactory.getLogger(DownloadManager.class);
 	// private TrackerManager trackerManager = new TrackerManager();
 	// private PeerConnectionManager connectionManager;
 	// 1. Start to download one file(hash_info, bitfield).
@@ -37,12 +41,11 @@ public class DownloadManager {
 	private TrackerManager trackerManager = new TrackerManager(this);
 
 	private PiecePicker piecePicker;
-	private final PeerConnectionManager connectionManager;
+	private PeerConnectionManager connectionManager;
 	// info_hash -> DownloadTask
 	private Map<String, DownloadTask> downloadTasks;
 
-	public DownloadManager(PeerConnectionManager connectionManager) throws IOException {
-		this.connectionManager = connectionManager;
+	public DownloadManager() throws IOException {
 		this.piecePicker = new PiecePicker(this);
 		loadDownloadTasks();
 
@@ -59,6 +62,10 @@ public class DownloadManager {
 		this.syncDownloadTasksToDisk();
 	}
 
+	public void setConnectionManager(PeerConnectionManager connectionManager) {
+		this.connectionManager = connectionManager;
+	}
+	
 	private void loadDownloadTasks() throws IOException { // If it fails, fail the system.
 		// FileOutputStream: If the specified file does not exits, create a new one.
 		// FileInputStream: If the specified file does not exits, throws exception.
