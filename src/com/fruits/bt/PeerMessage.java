@@ -62,7 +62,7 @@ public abstract class PeerMessage {
 		} else {
 			byte id = messageBytes.get();
 
-			logger.debug("PeerMessage:parseMessage -> id : " + id + ".");
+			logger.trace("PeerMessage:parseMessage -> id : {}.", id);
 
 			switch (id) {
 			case KEEP_ALIVE_MESSAGE_ID:
@@ -447,7 +447,7 @@ public abstract class PeerMessage {
 		public ByteBuffer encode() {
 			byte[] bytes = this.block.array();
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + PieceMessage.BASE_SIZE + bytes.length);
-			logger.debug("PieceMessage prefixLength : " + (PieceMessage.BASE_SIZE + bytes.length));
+			logger.trace("PieceMessage prefixLength : {}.", (PieceMessage.BASE_SIZE + bytes.length));
 			messageBytes.putInt(PieceMessage.BASE_SIZE + bytes.length);
 			messageBytes.put(PeerMessage.PIECE_MESSAGE_ID);
 			messageBytes.putInt(this.index);

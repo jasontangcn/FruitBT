@@ -67,7 +67,7 @@ public class JavaAPITest {
 						Thread.currentThread().sleep(3 * 1000L);
 		
 				} catch (Exception e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 		
 			}
@@ -89,7 +89,7 @@ public class JavaAPITest {
 						Thread.currentThread().sleep(4 * 1000L);
 		
 				} catch (Exception e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 		
 			}}, 0L, 2, TimeUnit.SECONDS);

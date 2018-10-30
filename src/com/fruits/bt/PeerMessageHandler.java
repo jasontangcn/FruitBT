@@ -57,10 +57,9 @@ public class PeerMessageHandler {
 		// bytes write/ms
 		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / time);
 
-		logger.debug("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePrePeriod
-				+ ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ",\n" + "readRate = " + readRate
-				+ " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
-
+		logger.debug("PeerMessageHandler [bytesReadPrePeriod= {}, bytesRead= {}, timePrePeriod= {}, \n bytesWritten= {}, bytesWritePrePeriod= {}, readRate= {} bytes/ms , writeRate= {} bytes/ms].",
+				bytesReadPrePeriod, bytesRead, timePrePeriod, bytesWritten, bytesWritePrePeriod, readRate, writeRate);
+		
 		this.bytesReadPrePeriod = this.bytesRead;
 		this.bytesWritePrePeriod = this.bytesWritten;
 		this.timePrePeriod = System.currentTimeMillis();
@@ -87,6 +86,7 @@ public class PeerMessageHandler {
 				// NotYetConnectedException if the channel is not connected.
 				int n = socketChannel.read(readBuffer); // IOException
 				if (n == -1) {
+					logger.warn("Peer closed this connection peacefully.");
 					this.connection.selfClose();
 					return null;
 				}
@@ -94,7 +94,7 @@ public class PeerMessageHandler {
 					return null;
 				}
 				this.lengthPrefix = readBuffer.getInt(0);
-				logger.debug("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
+				logger.trace("PeerMessageHandler:readMessage -> lengthPrefix : {}.", lengthPrefix);
 				readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 			}
 			// NotYetConnectedException if the channel is not connected.
@@ -118,7 +118,7 @@ public class PeerMessageHandler {
 				return peerMessage;
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 			this.connection.selfClose();
 			return null;
 		}
@@ -141,7 +141,7 @@ public class PeerMessageHandler {
 			try {
 				n = socketChannel.write(this.messageBytesToWrite); // NotYetConnectedException
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.error("", e);
 				this.connection.selfClose();
 				return false;
 			}
@@ -169,7 +169,7 @@ public class PeerMessageHandler {
 			this.messageBytesToWrite = messageToSend.encode();
 			this.state = SendState.READY;
 		} else {
-			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not set message.");
+			throw new RuntimeException("PeerMessageHandler->setMessageToSend: this.state = " + this.state + ", can not send message.");
 		}
 	}
 

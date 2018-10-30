@@ -124,7 +124,7 @@ public class TrackerManager {
 		BEValue failureReasonValue = resp.get(TrackerManager.RESP_FAILURE_REASON);
 		if(failureReasonValue != null) {
 			failureReason = failureReasonValue.getString();
-			logger.debug("failure reason: " + failureReason + ".");
+			logger.trace("failure reason: " + failureReason + ".");
 			throw new RuntimeException("Getting peers from trakcer failed, reason: " + failureReason + ".");
 		}
 		
@@ -138,16 +138,16 @@ public class TrackerManager {
 				byte[] ip = Arrays.copyOfRange(peersByte, i * 6, (i * 6 + 4));
 				byte[] port = Arrays.copyOfRange(peersByte, i * 6 + 4, (i + 1) * 6);
 
-				logger.debug(String.valueOf(ip.length));
-				logger.debug(String.valueOf(port.length));
+				logger.trace("bytes of ip: {}.", String.valueOf(ip.length));
+				logger.trace("bytes of port: {}.", String.valueOf(port.length));
 
 				InetAddress peerIP = InetAddress.getByAddress(ip);
 				ByteArrayInputStream bis = new ByteArrayInputStream(port);
 				DataInputStream dis = new DataInputStream(bis);
 				int peerPort = dis.readUnsignedShort();
 
-				logger.debug(peerIP.getHostAddress());
-				logger.debug(String.valueOf(peerPort));
+				logger.debug("ip: {}.", peerIP.getHostAddress());
+				logger.debug("port: {}.", String.valueOf(peerPort));
 				
 				Peer peer = new Peer();
 				peer.setAddress(new InetSocketAddress(peerIP, peerPort));
@@ -180,7 +180,7 @@ public class TrackerManager {
 	 *   Usually it's 1. 
 	
 	 * event
-	 *   started��completed��stopped
+	 *   started, completed, stopped
 	
 	 * ip
 	 * numwant
@@ -206,13 +206,13 @@ public class TrackerManager {
 		try {
 			infoHash = URLEncoder.encode(new String(seed.getInfoHash(), "ISO-8859-1"), "ISO-8859-1");
 		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 		String peerId = "";
 		try {
 			peerId = URLEncoder.encode(new String(Client.PEER_ID, "ISO-8859-1"), "ISO-8859-1");
 		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 
 		DownloadTask task = this.downloadManager.getDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
@@ -250,7 +250,7 @@ public class TrackerManager {
 
 		sb.append(status);
 
-		logger.debug("Tracker request: " + sb.toString());
+		logger.trace("Tracker request: {}.", sb.toString());
 		return sb.toString();
 	}
 }

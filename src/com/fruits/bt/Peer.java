@@ -7,7 +7,12 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Peer {
+	static final Logger logger = LoggerFactory.getLogger(Peer.class);
+	
 	private InetSocketAddress address;
 
 	private byte[] peerId; // same with the peerId passed to Tracker
@@ -26,7 +31,7 @@ public class Peer {
 		try {
 			ip = InetAddress.getLocalHost().getHostAddress();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 		Map<String, String> env = System.getenv();
 		String userDomain = env.get("USERDOMAIN");
@@ -107,7 +112,7 @@ public class Peer {
 
 	@Override
 	public String toString() {
-		return "Peer [address=" + address + ", peerId=" + Arrays.toString(peerId) + ", infoHash=" + Arrays.toString(infoHash) + ", infoHashString=" + infoHashString
+		return "Peer [address=" + address + ", peerId=" + Utils.bytes2HexString(peerId) + ", infoHash=" + Utils.bytes2HexString(infoHash) + ", infoHashString=" + infoHashString
 				+ ", bitfield=" + bitfield + "]";
 	}
 }

@@ -89,7 +89,7 @@ public class FileMetadata implements Serializable {
 		int sliceLength = seed.getSliceLength();
 
 		if (pieceLength < sliceLength) {
-			logger.debug("Piece length: " + pieceLength + ", sliceLength: " + sliceLength + ".");
+			logger.trace("Piece length: {}, sliceLength: {}.", pieceLength, sliceLength);
 			throw new RuntimeException("Piece length should not be less than slice length.");
 		}
 		//TODO: long->int?
@@ -162,7 +162,7 @@ public class FileMetadata implements Serializable {
 	 * 
 	 */
 	public ByteBuffer readSlice(Slice slice) throws IOException {
-		logger.debug("Thread : " + Thread.currentThread() + " is reading slice, index = " + slice.getIndex() + ", begin = " + slice.getBegin() + ".");
+		logger.trace("Thread : {} is reading slice, index = {}, begin = {}.", Thread.currentThread(), slice.getIndex(), slice.getBegin());
 
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * slice.getIndex() + slice.getBegin();
 		int endPos/*inclusive*/ = startPos + slice.getLength() - 1;
@@ -197,7 +197,7 @@ public class FileMetadata implements Serializable {
 					buffer.flip();
 					data.put(buffer);
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 					return null;
 				}
@@ -244,7 +244,7 @@ public class FileMetadata implements Serializable {
 	 * start: 16 - 19(inclusive) -> written to file2& (file3 skipped)& file4 
 	 */
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
-		logger.debug("Thread : " + Thread.currentThread() + " is writing slice, index = " + index + ", begin = " + begin + ".");
+		logger.trace("Thread : {} is writing slice, index = {}, begin = {}.", Thread.currentThread(), index, begin);
 
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * index + begin;
 		int endPos/*inclusive*/ = startPos + length - 1;
@@ -276,7 +276,7 @@ public class FileMetadata implements Serializable {
 				try {
 					fileChannel.write(ByteBuffer.wrap(buffer), pos); // TODO: Perf Improvement!
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 					return false;
 				}
@@ -305,14 +305,14 @@ public class FileMetadata implements Serializable {
 	// Only if opening file fails, throw the IOException.
 	/*
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
-		logger.debug("Thread : " + Thread.currentThread() + " is writing slice.");
+		logger.trace("Thread : " + Thread.currentThread() + " is writing slice.");
 		openFile();
 		// int or long?
 		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
 		try {
 			this.fileChannel.write(data, startPos);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 			// If write fails, ignore it, pls. never continue to update the metadata of pieces.
 			return false;
 		}
@@ -335,7 +335,7 @@ public class FileMetadata implements Serializable {
 	// The file should be always open for random access.
 	/*
 	public ByteBuffer readSlice(Slice slice) throws IOException {
-		logger.debug("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
+		logger.trace("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
 	
 		openFile();
 	
@@ -350,7 +350,7 @@ public class FileMetadata implements Serializable {
 			//tempFile.close();
 			this.fileChannel.read(buffer, startPos);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 			// If read fails, return null.
 			return null;
 		}
@@ -383,7 +383,7 @@ public class FileMetadata implements Serializable {
 			if (pieces.get(i).isAllSlicesCompleted())
 				bitfield.set(i);
 		}
-		logger.debug("FileMetadata.getBitfield-> size : " + bitfield.size() + ", length = " + bitfield.length());
+		logger.trace("FileMetadata.getBitfield-> size : {}, length = {}.", bitfield.size(), bitfield.length());
 		return bitfield;
 	}
 

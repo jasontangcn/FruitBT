@@ -4,7 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class HandshakeHandler {
+	static final Logger logger = LoggerFactory.getLogger(HandshakeHandler.class);
+	
 	// The PeerConnection this handler works for.
 	private final PeerConnection connection;
 
@@ -19,16 +24,18 @@ public class HandshakeHandler {
 		SocketChannel socketChannel = this.connection.getChannel();
 		try {
 			if (socketChannel.read(readBuffer) == -1) { // -1 or IOException
+				logger.warn("Peer closed this connection peacefully.");
 				this.connection.selfClose();
 				return null;
 			} else {
+				//logger.warn("HandshakeHandler-> Remaining {} bytes.", readBuffer.remaining());
 				if (readBuffer.hasRemaining())
 					return null;
 				readBuffer.flip();
 				return HandshakeMessage.decode(readBuffer);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 			this.connection.selfClose();
 			return null;
 		}
@@ -43,7 +50,7 @@ public class HandshakeHandler {
 			try {
 				n = socketChannel.write(messageBytesToSend); // IOException
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.error("", e);
 				this.connection.selfClose();
 				return false;
 			}

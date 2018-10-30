@@ -29,7 +29,7 @@ public class Bitmap {
 	}
 
 	public Bitmap(byte[] bits) {
-		//logger.debug("raw bitfield from peer: [" + Utils.bytes2HexString(bits) + "]");
+		//logger.trace("raw bitfield from peer: [" + Utils.bytes2HexString(bits) + "]");
 		if (bits == null || bits.length == 0)
 			throw new NullPointerException("bits can not be null or zero length.");
 		this.bits = bits;
@@ -70,9 +70,9 @@ public class Bitmap {
 	}
 
 	public String toString() {
-		logger.debug("raw data for bitmap: [" + Utils.bytes2HexString(this.bits) + "]");
 		StringBuilder sb = new StringBuilder();
-		sb.append("[(length=").append(this.length).append(")(");
+		sb.append("[Hex : " + Utils.bytes2HexString(this.bits) + ", ");
+		sb.append("length = ").append(this.length).append(", (");
 		int n;
 		if (length == -1) {
 			n = this.size();

@@ -39,24 +39,22 @@ public class Client {
 		//REMOTE_PEER_ID = Helper.genClientId(); //props.getProperty("remote.peer.id");
 		
 		/*
-		logger.debug(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
+		logger.trace(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
 				+ new String(REMOTE_PEER_ID) + ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT + ".");
 				*/
-		logger.debug(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + 
-				new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ".");
+		logger.debug("{}, {}, {}, {}, {}.", DOWNLOAD_DIR, DOWNLOAD_TASKS_FILE, new String(PEER_ID), LISTENER_PORT, LISTENER_DOMAIN);
 	}
 
 	public static void main(String[] args) throws IOException {
 		Client system = new Client();
 		system.start();
-
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				logger.info("Shutting down the system.");
+				logger.error("Shutting down the system.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
 				system.stop();
-				logger.info("Shutting down the system spent " + (System.currentTimeMillis() - begin) + " ms.");
+				logger.error("Shutting down the system spent " + (System.currentTimeMillis() - begin) + " ms.");
 			}
 		});
 	}
@@ -90,14 +88,13 @@ public class Client {
 		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT), downloadManager,
 				new Thread.UncaughtExceptionHandler() {
 					public void uncaughtException(Thread t, Throwable e) {
-						logger.info("Connection manager failed, it is failing the system.");
-						e.printStackTrace();
+						logger.error("Connection manager failed, it is failing the system.", e);
 						System.exit(0);
 					}
 				});
 		downloadManager.setConnectionManager(connectionManager);
 
-		//downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
+		downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
 	}
 

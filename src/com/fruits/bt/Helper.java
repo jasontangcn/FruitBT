@@ -35,7 +35,7 @@ public class Helper {
 			if (channel != null && channel.isOpen())
 				channel.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 	}
 
@@ -44,7 +44,7 @@ public class Helper {
 			if (serverChannel != null && serverChannel.isOpen())
 				serverChannel.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 	}
 
@@ -53,12 +53,12 @@ public class Helper {
 			if (selector != null && selector.isOpen())
 				selector.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("", e);
 		}
 	}
 
 	public static boolean isInterested(Bitmap a, Bitmap b) {
-		logger.debug("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
+		logger.trace("a-> {} [length = {} , size = {}], b-> {} [length = {}, size = {}.", a, a.length(), a.size(), b, b.length(), b.size());
 		// TODO: validate parameters.
 		boolean interested = false;
 		for (int i = 0; i < b.size(); i++) {
@@ -67,7 +67,7 @@ public class Helper {
 				break;
 			}
 		}
-		logger.debug("a is interested in b? " + interested);
+		logger.debug("a is interested in b? {}", interested);
 		return interested;
 	}
 }

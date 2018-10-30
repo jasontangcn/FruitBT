@@ -14,10 +14,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 
 public class Utils {
+	static final Logger logger = LoggerFactory.getLogger(TrackerManager.class);
+	
 	public static byte[] getSHA1(byte[] data) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA1");
 		md.update(data);
@@ -25,6 +30,7 @@ public class Utils {
 	}
 
 	public static String bytes2HexString(byte[] data) {
+		if(data == null) return null;
 		String hexChars = "0123456789abcdef";
 		StringBuilder sb = new StringBuilder();
 		for (byte v : data) {
@@ -78,7 +84,7 @@ public class Utils {
 				try {
 					channel.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
 
@@ -86,7 +92,7 @@ public class Utils {
 				try {
 					fis.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
 
@@ -94,7 +100,7 @@ public class Utils {
 				try {
 					os.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
 		}

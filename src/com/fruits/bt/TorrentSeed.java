@@ -366,7 +366,7 @@ public class TorrentSeed implements Serializable {
 			seed.setFileInfos(fileInfos);
 		}
 
-		logger.debug("It's a directory? : num of files: " + fileInfos.size() + ".");
+		logger.debug("It's a directory? : num of files: {}.", fileInfos.size());
 
 		try {
 			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());
@@ -397,12 +397,12 @@ public class TorrentSeed implements Serializable {
 		}
 
 		public void close() {
-			logger.debug("FileInfo -> Closing temp file.");
+			logger.trace("FileInfo -> Closing temp file.");
 			if (fileChannel != null && fileChannel.isOpen()) {
 				try {
 					fileChannel.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
 		}

@@ -85,11 +85,11 @@ public class DownloadManager {
 					if (ois != null)
 						ois.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
-			logger.debug("Loaded tasks from disk : " + this.downloadTasks + ".");
+			logger.info("Loaded tasks from disk : {}.", this.downloadTasks);
 		} else {
 			this.downloadTasks = new HashMap<String, DownloadTask>();
 			ObjectOutputStream oos = null;
@@ -101,10 +101,10 @@ public class DownloadManager {
 					if (oos != null)
 						oos.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("", e);
 				}
 			}
-			logger.debug("Created a new task.");
+			logger.info("Created a new task.");
 		}
 	}
 
@@ -129,9 +129,10 @@ public class DownloadManager {
 		task.setState(DownloadTask.DownloadState.PENDING);
 
 		this.downloadTasks.put(Utils.bytes2HexString(seed.getInfoHash()), task);
-		logger.debug("New task was added, task length : " + this.downloadTasks.size() + ".");
+		logger.trace("New task was added, task length : {}.", this.downloadTasks.size());
 
 		syncDownloadTasksToDisk();
+		// TODO: Just for test, remove it.
 		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 	}
 
@@ -150,10 +151,10 @@ public class DownloadManager {
 		// TODO: Set the correct peerId, infoHash and bitfield.
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHashString(infoHash);
-		logger.debug("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetadata.getBitfield() + ".");
+		logger.info("Started download task: infoHash : {}, bitfield : {}.", infoHash, fileMetadata.getBitfield());
 
 		List<Peer> peers = trackerManager.getPeers(seed);
-		logger.debug("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
+		logger.debug("Got peers from tracker server : {} for {}.", peers, infoHash);
 
 		for (Peer peer : peers) {
 			connectionManager.createOutgoingConnection(self, peer); // create may fail and get a NULL object, no problem, just ignore failed peer.
@@ -162,7 +163,7 @@ public class DownloadManager {
 		// TODO: Test code, only download the first slice that is not downloaded yet.
 		/*
 		Slice slice = fileMetada.getNextIncompletedSlice();
-		logger.debug("Next slice to download : " + slice + ".");
+		logger.trace("Next slice to download : " + slice + ".");
 		peerConnection.addMessageToSend(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 		*/
 	}
@@ -186,7 +187,7 @@ public class DownloadManager {
 			syncDownloadTasksToDisk();
 		} catch (IOException e) {
 			// TODO: how to handle this exception?
-			e.printStackTrace();
+			logger.error("", e);
 		}
 	}
 
@@ -222,7 +223,7 @@ public class DownloadManager {
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_FILE));
 		oos.writeObject(this.downloadTasks);
 		oos.close();
-		//logger.debug("downloadTasks : " + this.downloadTasks + ".");
+		//logger.trace("downloadTasks : " + this.downloadTasks + ".");
 	}
 
 	public Bitmap getBitfield(String infoHash) {
@@ -248,7 +249,7 @@ public class DownloadManager {
 		} catch (IOException e) {
 			// TODO:
 			// If exception caught, failed to open temp file, it's fatal error.
-			e.printStackTrace();
+			logger.error("", e);
 			this.stopDownloadTask(infoHash);
 			return null;
 		}
@@ -277,7 +278,7 @@ public class DownloadManager {
 			// TODO:
 			// Failed to open temp file or failed to sych tasks to disk.
 			// In any case, we should stop this task(do not need to fail the whole system).
-			e.printStackTrace();
+			logger.error("", e);
 			this.stopDownloadTask(infoHash);
 		}
 	}
