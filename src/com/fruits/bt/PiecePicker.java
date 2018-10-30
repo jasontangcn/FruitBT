@@ -8,13 +8,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Random;
-
-import com.fruits.bt.PeerMessage.PieceMessage;
+import com.fruits.bt.PeerMessage.RequestMessage;
 
 public class PiecePicker {
 	static final Logger logger = LoggerFactory.getLogger(PiecePicker.class);
@@ -120,7 +119,7 @@ public class PiecePicker {
 				break;
 			}
 		}
-		if(!found) // AliveManager closed connection when the status in OUT_BITFILED_SENT, looks connection is not added to PiecePicker yet.
+		if(!found) // AliveManager closed connection when the status in OUT_BITFILED_SENT, connection is not added to PiecePicker yet.
 			return;
 
 		String infoHash = connection.getSelf().getInfoHashString();
@@ -137,6 +136,18 @@ public class PiecePicker {
 		this.removeBatchRequest(infoHash, connection.getConnectionId());
 	}
 
+	public void removeBatchRequest(String infoHash, String connectionId) {
+		List<BatchRequest> requests = this.batchRequests.get(infoHash);
+		Iterator<BatchRequest> iterator = requests.iterator();
+		while (iterator.hasNext()) {
+			BatchRequest request = iterator.next();
+			if (request.getConnectionId() == connectionId) {
+				iterator.remove();
+				return;
+			}
+		}
+	}
+	
 	private BatchRequest getBatchRequestInProgress(String infoHash, String connectionId) {
 		List<BatchRequest> requests = this.batchRequests.get(infoHash);
 		for (BatchRequest request : requests) {
@@ -148,10 +159,7 @@ public class PiecePicker {
 	}
 
 	public boolean isBatchRequestInProgress(String infoHash, String connectionId) {
-		BatchRequest request = this.getBatchRequestInProgress(infoHash, connectionId);
-		if (request == null)
-			return false;
-		return true;
+		return this.getBatchRequestInProgress(infoHash, connectionId) == null ? false : true;
 	}
 
 	// Strategy:
@@ -160,13 +168,13 @@ public class PiecePicker {
 	//   < 90% Rarest First
 	//   < 100% End Game
 
-	// It's called in these situation:
+	// It is called in these situation:
 	// 1. Received UnchokeMessage
 	// 2. Received HaveMessage
 	// 3. Received PieceMessage and previous batch is completed
 	// 4. 
 	public void requestMoreSlices(PeerConnection connection) {
-		logger.debug("PiecePicker: start to work.");
+		logger.debug("PiecePicke->requestMoreSlices : start to work.");
 		String infoHash = connection.getSelf().getInfoHashString();
 		String connectionId = connection.getConnectionId();
 
@@ -202,8 +210,8 @@ public class PiecePicker {
 				Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 				Comparator<Map.Entry<Integer, Integer>> comparator = new Comparator<Map.Entry<Integer, Integer>>() {
 					@Override
-					public int compare(Entry<Integer, Integer> p, Entry<Integer, Integer> k) {
-						return p.getValue().intValue() - k.getValue().intValue();
+					public int compare(Entry<Integer, Integer> obj1, Entry<Integer, Integer> obj2) {
+						return obj1.getValue().intValue() - obj2.getValue().intValue();
 					}
 				};
 
@@ -231,8 +239,7 @@ public class PiecePicker {
 
 		logger.debug("PiecePicker: next index to request -> " + request.getIndex() + ".");
 
-		// Now 
-		// request is a new index 
+		// Now request is a new index 
 		// or a request(from unchoking message) that has completed a batch(received piece)
 		// or received have message.		
 		List<Slice> slices = metadata.getNextBatchIncompletedSlices(request.getIndex(), PiecePicker.BATCH_REQUEST_SIZE);
@@ -247,7 +254,7 @@ public class PiecePicker {
 			request.setRequested(slices.size());
 			List<PeerMessage> messages = new ArrayList<PeerMessage>();
 			for (Slice slice : slices) {
-				messages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
+				messages.add(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 			}
 			logger.debug("Batch RequestMessage size : " + slices.size() + ".");
 			connection.addMessageToSend(messages);
@@ -256,18 +263,6 @@ public class PiecePicker {
 			this.removeBatchRequest(infoHash, connectionId);
 			logger.debug("One batch requet is done, proceed to request more.");
 			requestMoreSlices(connection);
-		}
-	}
-
-	public void removeBatchRequest(String infoHash, String connectionId) {
-		List<BatchRequest> requests = this.batchRequests.get(infoHash);
-		Iterator<BatchRequest> iterator = requests.iterator();
-		while (iterator.hasNext()) {
-			BatchRequest request = iterator.next();
-			if (request.getConnectionId() == connectionId) {
-				iterator.remove();
-				return;
-			}
 		}
 	}
 

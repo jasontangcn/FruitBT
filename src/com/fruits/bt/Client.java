@@ -52,11 +52,11 @@ public class Client {
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				logger.info("Shutting down the system.");
+				logger.error("Shutting down the system.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
 				system.stop();
-				logger.info("Shutting down the system spent " + (System.currentTimeMillis() - begin) + " ms.");
+				logger.error("Shutting down the system spent " + (System.currentTimeMillis() - begin) + " ms.");
 			}
 		});
 	}
@@ -90,7 +90,7 @@ public class Client {
 		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT), downloadManager,
 				new Thread.UncaughtExceptionHandler() {
 					public void uncaughtException(Thread t, Throwable e) {
-						logger.info("Connection manager failed, it is failing the system.");
+						logger.error("Connection manager failed, it is failing the system.");
 						e.printStackTrace();
 						System.exit(0);
 					}
