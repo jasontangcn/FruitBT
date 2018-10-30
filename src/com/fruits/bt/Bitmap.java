@@ -4,11 +4,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 // TODO:
 // 1. Not allowed zero length.
 // 2. ByteOrder.LITTLE_ENDIAN or ByteOrder.BIG_ENDIAN
 
 public class Bitmap {
+	static final Logger logger = LoggerFactory.getLogger(FileMetadata.class);
+	
 	private final byte[] bits;
 	// This used a 'real length'.
 	// size is used a real length of internal byte array.
@@ -24,7 +29,7 @@ public class Bitmap {
 	}
 
 	public Bitmap(byte[] bits) {
-		//System.out.println("raw bitfield from peer: [" + Utils.bytes2HexString(bits) + "]");
+		//logger.debug("raw bitfield from peer: [" + Utils.bytes2HexString(bits) + "]");
 		if (bits == null || bits.length == 0)
 			throw new NullPointerException("bits can not be null or zero length.");
 		this.bits = bits;
@@ -65,7 +70,7 @@ public class Bitmap {
 	}
 
 	public String toString() {
-		System.out.println("raw data for bitmap: [" + Utils.bytes2HexString(this.bits) + "]");
+		logger.debug("raw data for bitmap: [" + Utils.bytes2HexString(this.bits) + "]");
 		StringBuilder sb = new StringBuilder();
 		sb.append("[(length=").append(this.length).append(")(");
 		int n;

@@ -51,7 +51,7 @@ public class PiecePicker {
 	}
 
 	public void sliceReceived(PeerConnection connection) {
-		System.out.println("PiecePicker: sliceReceived is called.");
+		logger.debug("PiecePicker: sliceReceived is called.");
 		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHashString(), connection.getConnectionId());
 		request.setReceived(request.getReceived() + 1);
 
@@ -61,7 +61,7 @@ public class PiecePicker {
 	}
 
 	public void peerHaveNewPiece(String infoHash, int index) {
-		System.out.println("PiecePicker: peerHaveNewPiece -> infoHash : " + infoHash + ", index = " + index + ".");
+		logger.debug("PiecePicker: peerHaveNewPiece -> infoHash : " + infoHash + ", index = " + index + ".");
 
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		if (rarestFirst == null) {
@@ -78,7 +78,7 @@ public class PiecePicker {
 
 	// Add connection that is unchoked.
 	public void addConnection(PeerConnection connection) {
-		System.out.println("PiecePicker: add a new connection : " + connection.getConnectionId() + ".");
+		logger.debug("PiecePicker: add a new connection : " + connection.getConnectionId() + ".");
 		this.connections.add(connection);
 
 		String infoHash = connection.getSelf().getInfoHashString();
@@ -108,7 +108,7 @@ public class PiecePicker {
 
 	// Remove connection that is choked or closed.
 	public void removeConnection(PeerConnection connection) {
-		System.out.println("PiecePicker: removing connection : " + connection.getConnectionId() + ".");
+		logger.debug("PiecePicker: removing connection : " + connection.getConnectionId() + ".");
 		// TODO: Override the equals of PeerConnection then use API List.remove to remove the connection.
 		Iterator<PeerConnection> iterator = this.connections.iterator();
 		boolean found = false;
@@ -166,7 +166,7 @@ public class PiecePicker {
 	// 3. Received PieceMessage and previous batch is completed
 	// 4. 
 	public void requestMoreSlices(PeerConnection connection) {
-		System.out.println("PiecePicker: start to work.");
+		logger.debug("PiecePicker: start to work.");
 		String infoHash = connection.getSelf().getInfoHashString();
 		String connectionId = connection.getConnectionId();
 
@@ -195,10 +195,10 @@ public class PiecePicker {
 			int index = -1;
 			// Random
 			if (percentCompleted > 5) {
-				System.out.println("Using 'random pick' strategy.");
+				logger.debug("Using 'random pick' strategy.");
 				index = indexes.get(random.nextInt(indexes.size()));
 			} else if (percentCompleted > 5) { // Rarest First
-				System.out.println("Using 'Rarest First' strategy.");
+				logger.debug("Using 'Rarest First' strategy.");
 				Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 				Comparator<Map.Entry<Integer, Integer>> comparator = new Comparator<Map.Entry<Integer, Integer>>() {
 					@Override
@@ -217,11 +217,11 @@ public class PiecePicker {
 					}
 				}
 			} else { /* < 1 , sequential */
-				System.out.println("Using sequential strategy.");
+				logger.debug("Using sequential strategy.");
 				index = indexes.get(0);
 			}
 
-			System.out.println("PiecePicker: picked a new piece to request, index = " + index + ".");
+			logger.debug("PiecePicker: picked a new piece to request, index = " + index + ".");
 			// Finally find a index to request.
 			request = new BatchRequest();
 			request.setConnectionId(connectionId);
@@ -229,7 +229,7 @@ public class PiecePicker {
 			this.batchRequests.get(infoHash).add(request);
 		}
 
-		System.out.println("PiecePicker: next index to request -> " + request.getIndex() + ".");
+		logger.debug("PiecePicker: next index to request -> " + request.getIndex() + ".");
 
 		// Now 
 		// request is a new index 
@@ -249,12 +249,12 @@ public class PiecePicker {
 			for (Slice slice : slices) {
 				messages.add(new PeerMessage.RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 			}
-			System.out.println("Batch RequestMessage size : " + slices.size() + ".");
+			logger.debug("Batch RequestMessage size : " + slices.size() + ".");
 			connection.addMessageToSend(messages);
 		} else {
 			// This pieces have been completed, try to find next one to download.
 			this.removeBatchRequest(infoHash, connectionId);
-			System.out.println("One batch requet is done, proceed to request more.");
+			logger.debug("One batch requet is done, proceed to request more.");
 			requestMoreSlices(connection);
 		}
 	}

@@ -112,7 +112,6 @@ public class PeerConnection {
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHashString());
-
 				// TODO: need to validate it before assigning the length?
 				peerBitfield.setLength(selfBitfield.length());
 
@@ -170,6 +169,8 @@ public class PeerConnection {
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 
 				logger.debug("Status : " + this.state + ", completed reading bitfield message : " + message + ".");
+				logger.info("Completed handshake with peer.");
+				
 				if (this.interesting) {
 					PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
 					this.addMessageToSend(interestedMessage);
@@ -336,7 +337,7 @@ public class PeerConnection {
 			}
 			messageHandler.writeMessage();
 			if (messageHandler.isSendingInProgress()) {
-				logger.debug("Status : " + this.state + ", only partial bitfield message was written to peer.");
+				logger.debug("Status : " + this.state + ", only part of the bitfield message was written to peer.");
 				// OP_READ is unregistered.
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
@@ -353,7 +354,7 @@ public class PeerConnection {
 				this.connectionManager.addPeerConnection(this.peer.getInfoHashString(), this);
 				//this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
 				logger.debug("Status : " + this.state + ", completed writing bitfield message to peer.");
-
+				logger.info("Completed handshake with peer.");
 				// TODO: Shall we put this message in the head of the queue?
 				if (this.interesting) {
 					PeerMessage.InterestedMessage interestedMessage = new PeerMessage.InterestedMessage();
@@ -376,7 +377,7 @@ public class PeerConnection {
 			handshakeHandler.writeMessage();
 			if (handshakeHandler.isSendingInProgress()) {
 				// OP_READ is unregistered.
-				logger.debug("Status : " + this.state + ", only partial handshake message was written to peer.");
+				logger.debug("Status : " + this.state + ", only part of the handshake message was written to peer.");
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
@@ -410,7 +411,7 @@ public class PeerConnection {
 			messageHandler.writeMessage();
 			if (messageHandler.isSendingInProgress()) {
 				// OP_READ is unregistered.
-				logger.debug("Status : " + this.state + ", only partial bitfield message was written to peer.");
+				logger.debug("Status : " + this.state + ", only part of the bitfield message was written to peer.");
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
@@ -449,17 +450,17 @@ public class PeerConnection {
 						this.selfClose();
 						return;
 					}
-					logger.debug("Status : " + this.state + ", no message in the queue, unregistered OP_WRITE for this channel.");
+					logger.debug("Status : " + this.state + ", there is no message in queue, unregistered OP_WRITE for this channel.");
 					break;
 				}
 				logger.debug("Got a message from queue.");
 				messageHandler.setMessageToSend(message);
 			} else {
-				logger.debug("Status : " + this.state + ", continue to send remaining part of current message.");
+				logger.debug("Status : " + this.state + ", send remaining part of current message.");
 			}
 			messageHandler.writeMessage();
 			if (messageHandler.isSendingInProgress()) {
-				logger.debug("Status : " + this.state + ", only partial message was written to peer.");
+				logger.debug("Status : " + this.state + ", only part of the message was written to peer.");
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 				} catch (IOException e) {
@@ -543,7 +544,7 @@ public class PeerConnection {
 		// 2. Close the channel.
 		// 3. Cancel the indexes requesting in DownloadManager.
 		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
-		logger.debug("Closing connection : " + this);
+		logger.info("Closing connection : " + this);
 		this.connectionManager.unregister(this.socketChannel);
 
 		Helper.closeChannel(socketChannel);

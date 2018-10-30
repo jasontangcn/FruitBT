@@ -3,7 +3,11 @@ package com.fruits.bt;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class PeerMessage {
+	static final Logger logger = LoggerFactory.getLogger(PeerMessage.class);
 	//  message type id
 	//  <length prefix><message ID><payload>
 	//     keep_alive : <len=0000>
@@ -58,7 +62,7 @@ public abstract class PeerMessage {
 		} else {
 			byte id = messageBytes.get();
 
-			System.out.println("PeerMessage:parseMessage -> id : " + id + ".");
+			logger.debug("PeerMessage:parseMessage -> id : " + id + ".");
 
 			switch (id) {
 			case KEEP_ALIVE_MESSAGE_ID:
@@ -443,7 +447,7 @@ public abstract class PeerMessage {
 		public ByteBuffer encode() {
 			byte[] bytes = this.block.array();
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + PieceMessage.BASE_SIZE + bytes.length);
-			System.out.println("PieceMessage prefixLength : " + (PieceMessage.BASE_SIZE + bytes.length));
+			logger.debug("PieceMessage prefixLength : " + (PieceMessage.BASE_SIZE + bytes.length));
 			messageBytes.putInt(PieceMessage.BASE_SIZE + bytes.length);
 			messageBytes.put(PeerMessage.PIECE_MESSAGE_ID);
 			messageBytes.putInt(this.index);

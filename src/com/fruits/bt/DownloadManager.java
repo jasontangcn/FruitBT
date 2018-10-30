@@ -89,7 +89,7 @@ public class DownloadManager {
 				}
 			}
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
-			System.out.println("Loaded tasks from disk : " + this.downloadTasks + ".");
+			logger.debug("Loaded tasks from disk : " + this.downloadTasks + ".");
 		} else {
 			this.downloadTasks = new HashMap<String, DownloadTask>();
 			ObjectOutputStream oos = null;
@@ -104,7 +104,7 @@ public class DownloadManager {
 					e.printStackTrace();
 				}
 			}
-			System.out.println("Created a new task.");
+			logger.debug("Created a new task.");
 		}
 	}
 
@@ -129,7 +129,7 @@ public class DownloadManager {
 		task.setState(DownloadTask.DownloadState.PENDING);
 
 		this.downloadTasks.put(Utils.bytes2HexString(seed.getInfoHash()), task);
-		System.out.println("New task was added, task length : " + this.downloadTasks.size() + ".");
+		logger.debug("New task was added, task length : " + this.downloadTasks.size() + ".");
 
 		syncDownloadTasksToDisk();
 		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
@@ -150,10 +150,10 @@ public class DownloadManager {
 		// TODO: Set the correct peerId, infoHash and bitfield.
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHashString(infoHash);
-		System.out.println("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetadata.getBitfield() + ".");
+		logger.debug("self.infoHash : " + infoHash + ", self.bitfield : " + fileMetadata.getBitfield() + ".");
 
 		List<Peer> peers = trackerManager.getPeers(seed);
-		System.out.println("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
+		logger.debug("Got peers from tracker server : [" + peers + "] for " + infoHash + ".");
 
 		for (Peer peer : peers) {
 			connectionManager.createOutgoingConnection(self, peer); // create may fail and get a NULL object, no problem, just ignore failed peer.
@@ -162,7 +162,7 @@ public class DownloadManager {
 		// TODO: Test code, only download the first slice that is not downloaded yet.
 		/*
 		Slice slice = fileMetada.getNextIncompletedSlice();
-		System.out.println("Next slice to download : " + slice + ".");
+		logger.debug("Next slice to download : " + slice + ".");
 		peerConnection.addMessageToSend(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 		*/
 	}
@@ -222,7 +222,7 @@ public class DownloadManager {
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_FILE));
 		oos.writeObject(this.downloadTasks);
 		oos.close();
-		//System.out.println("downloadTasks : " + this.downloadTasks + ".");
+		//logger.debug("downloadTasks : " + this.downloadTasks + ".");
 	}
 
 	public Bitmap getBitfield(String infoHash) {

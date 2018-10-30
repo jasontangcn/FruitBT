@@ -8,6 +8,9 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fruits.bt.TorrentSeed.FileInfo;
 
 // TODO: Some days ago, if I open/write RandomAccessFile frequently, always got a exception.
@@ -15,6 +18,7 @@ import com.fruits.bt.TorrentSeed.FileInfo;
 // Need to reproduce it.
 
 public class FileMetadata implements Serializable {
+	static final Logger logger = LoggerFactory.getLogger(FileMetadata.class);
 	// TODO: VERY IMPORTANT!  
 	// Re-design serialVersionUID.
 	private static final long serialVersionUID = -8543915446727382746L;
@@ -85,7 +89,7 @@ public class FileMetadata implements Serializable {
 		int sliceLength = seed.getSliceLength();
 
 		if (pieceLength < sliceLength) {
-			System.out.println("Piece length: " + pieceLength + ", sliceLength: " + sliceLength + ".");
+			logger.debug("Piece length: " + pieceLength + ", sliceLength: " + sliceLength + ".");
 			throw new RuntimeException("Piece length should not be less than slice length.");
 		}
 		//TODO: long->int?
@@ -158,7 +162,7 @@ public class FileMetadata implements Serializable {
 	 * 
 	 */
 	public ByteBuffer readSlice(Slice slice) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is reading slice, index = " + slice.getIndex() + ", begin = " + slice.getBegin() + ".");
+		logger.debug("Thread : " + Thread.currentThread() + " is reading slice, index = " + slice.getIndex() + ", begin = " + slice.getBegin() + ".");
 
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * slice.getIndex() + slice.getBegin();
 		int endPos/*inclusive*/ = startPos + slice.getLength() - 1;
@@ -240,7 +244,7 @@ public class FileMetadata implements Serializable {
 	 * start: 16 - 19(inclusive) -> written to file2& (file3 skipped)& file4 
 	 */
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is writing slice, index = " + index + ", begin = " + begin + ".");
+		logger.debug("Thread : " + Thread.currentThread() + " is writing slice, index = " + index + ", begin = " + begin + ".");
 
 		int startPos/*inclusive*/ = this.seed.getPieceLength() * index + begin;
 		int endPos/*inclusive*/ = startPos + length - 1;
@@ -301,7 +305,7 @@ public class FileMetadata implements Serializable {
 	// Only if opening file fails, throw the IOException.
 	/*
 	public boolean writeSlice(int index, int begin, int length, ByteBuffer data) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is writing slice.");
+		logger.debug("Thread : " + Thread.currentThread() + " is writing slice.");
 		openFile();
 		// int or long?
 		int startPos = (this.seed.getPieceLength() * index) + begin; // 0 based ->
@@ -331,7 +335,7 @@ public class FileMetadata implements Serializable {
 	// The file should be always open for random access.
 	/*
 	public ByteBuffer readSlice(Slice slice) throws IOException {
-		System.out.println("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
+		logger.debug("Thread : " + Thread.currentThread() + " is reading slice from " + this.filePath + ".");
 	
 		openFile();
 	
@@ -379,7 +383,7 @@ public class FileMetadata implements Serializable {
 			if (pieces.get(i).isAllSlicesCompleted())
 				bitfield.set(i);
 		}
-		System.out.println("FileMetadata.getBitfield-> size : " + bitfield.size() + ", length = " + bitfield.length());
+		logger.debug("FileMetadata.getBitfield-> size : " + bitfield.size() + ", length = " + bitfield.length());
 		return bitfield;
 	}
 

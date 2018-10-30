@@ -5,6 +5,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fruits.bt.PeerMessage.PieceMessage;
 
 /*
@@ -12,6 +15,7 @@ import com.fruits.bt.PeerMessage.PieceMessage;
  * 2. 1+ messages are available.
  */
 public class PeerMessageHandler {
+	static final Logger logger = LoggerFactory.getLogger(PeerMessageHandler.class);
 	public static final int PEER_MESSAGE_LENGTH_PREFIX = 4;
 	private int lengthPrefix = -1;
 	private final PeerConnection connection;
@@ -53,7 +57,7 @@ public class PeerMessageHandler {
 		// bytes write/ms
 		this.writeRate = ((this.bytesWritten - this.bytesWritePrePeriod) / time);
 
-		System.out.println("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePrePeriod
+		logger.debug("PeerMessageHandler [bytesReadPrePeriod = " + bytesReadPrePeriod + ", bytesRead = " + bytesRead + ", timePreRead = " + timePrePeriod
 				+ ",\n" + "bytesWritten = " + bytesWritten + ", bytesWritePrePeriod = " + bytesWritePrePeriod + ",\n" + "readRate = " + readRate
 				+ " bytes/ms , writeRate = " + writeRate + " bytes/ms]." + "\n");
 
@@ -90,7 +94,7 @@ public class PeerMessageHandler {
 					return null;
 				}
 				this.lengthPrefix = readBuffer.getInt(0);
-				System.out.println("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
+				logger.debug("PeerMessageHandler:readMessage -> lengthPrefix : " + lengthPrefix + ".");
 				readBuffer.limit(this.lengthPrefix + PeerMessageHandler.PEER_MESSAGE_LENGTH_PREFIX);
 			}
 			// NotYetConnectedException if the channel is not connected.

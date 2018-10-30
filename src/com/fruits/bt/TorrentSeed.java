@@ -13,11 +13,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 
 public class TorrentSeed implements Serializable {
+	static final Logger logger = LoggerFactory.getLogger(TorrentSeed.class);
+	
 	private static final long serialVersionUID = -2977695181171516029L;
 
 	public static final String METAINFO_ANNOUNCE = "announce";
@@ -361,7 +366,7 @@ public class TorrentSeed implements Serializable {
 			seed.setFileInfos(fileInfos);
 		}
 
-		System.out.println("It's a directory? : num of files: " + fileInfos.size() + ".");
+		logger.debug("It's a directory? : num of files: " + fileInfos.size() + ".");
 
 		try {
 			byte[] infoHash = Utils.getSHA1(BEncoder.bencode(values.get(TorrentSeed.METAINFO_INFO).getMap()).array());
@@ -392,7 +397,7 @@ public class TorrentSeed implements Serializable {
 		}
 
 		public void close() {
-			System.out.println("FileInfo -> Closing temp file.");
+			logger.debug("FileInfo -> Closing temp file.");
 			if (fileChannel != null && fileChannel.isOpen()) {
 				try {
 					fileChannel.close();

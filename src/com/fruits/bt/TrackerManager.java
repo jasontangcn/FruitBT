@@ -18,12 +18,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fruits.bt.DownloadTask.DownloadState;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 
 // TODO: Communicate with tracker server and get the peers from a torrent seed.
 public class TrackerManager {
+	static final Logger logger = LoggerFactory.getLogger(TrackerManager.class);
 	/*
 	 * info_hash
 	 * peer_id
@@ -35,7 +39,7 @@ public class TrackerManager {
 	 *   Usually it's 1. 
 	
 	 * event
-	 *   started¡¢completed¡¢stopped
+	 *   startedï¿½ï¿½completedï¿½ï¿½stopped
 	
 	 * ip
 	 * numwant
@@ -51,7 +55,7 @@ public class TrackerManager {
 	public static final String PARAM_LEFT = "left";
 	public static final String PARAM_COMPACT = "compact"; // (required?)
 	public static final int COMPACT = 1; // by default
-	public static final String PARAM_EVENT = "event"; // started¡¢completed¡¢stopped
+	public static final String PARAM_EVENT = "event"; // startedï¿½ï¿½completedï¿½ï¿½stopped
 	public static final String PARAM_NUM_WANT = "numwant"; // (for some tracker servers, it's required?)
 	public static final int NUM_WANT = 50; // by default
 	public static final String PARAM_KEY = "key"; // random number to identify client (optional)
@@ -120,7 +124,7 @@ public class TrackerManager {
 		BEValue failureReasonValue = resp.get(TrackerManager.RESP_FAILURE_REASON);
 		if(failureReasonValue != null) {
 			failureReason = failureReasonValue.getString();
-			System.out.println("failure reason: " + failureReason + ".");
+			logger.debug("failure reason: " + failureReason + ".");
 			throw new RuntimeException("Getting peers from trakcer failed, reason: " + failureReason + ".");
 		}
 		
@@ -134,16 +138,16 @@ public class TrackerManager {
 				byte[] ip = Arrays.copyOfRange(peersByte, i * 6, (i * 6 + 4));
 				byte[] port = Arrays.copyOfRange(peersByte, i * 6 + 4, (i + 1) * 6);
 
-				System.out.println(ip.length);
-				System.out.println(port.length);
+				logger.debug(String.valueOf(ip.length));
+				logger.debug(String.valueOf(port.length));
 
 				InetAddress peerIP = InetAddress.getByAddress(ip);
 				ByteArrayInputStream bis = new ByteArrayInputStream(port);
 				DataInputStream dis = new DataInputStream(bis);
 				int peerPort = dis.readUnsignedShort();
 
-				System.out.println(peerIP.getHostAddress());
-				System.out.println(peerPort);
+				logger.debug(peerIP.getHostAddress());
+				logger.debug(String.valueOf(peerPort));
 				
 				Peer peer = new Peer();
 				peer.setAddress(new InetSocketAddress(peerIP, peerPort));
@@ -176,7 +180,7 @@ public class TrackerManager {
 	 *   Usually it's 1. 
 	
 	 * event
-	 *   started¡¢completed¡¢stopped
+	 *   startedï¿½ï¿½completedï¿½ï¿½stopped
 	
 	 * ip
 	 * numwant
@@ -246,7 +250,7 @@ public class TrackerManager {
 
 		sb.append(status);
 
-		System.out.println("Tracker request: " + sb.toString());
+		logger.debug("Tracker request: " + sb.toString());
 		return sb.toString();
 	}
 }

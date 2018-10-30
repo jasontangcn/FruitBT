@@ -11,7 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Helper {
+	static final Logger logger = LoggerFactory.getLogger(Helper.class);
+	
 	public static boolean createFile(String filePath) throws IOException {
 		File file = new File(filePath);
 		if (file.exists())
@@ -53,8 +58,7 @@ public class Helper {
 	}
 
 	public static boolean isInterested(Bitmap a, Bitmap b) {
-		System.out
-				.println("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
+		logger.debug("a-> " + a + " [length = " + a.length() + ", size = " + a.size() + "], b-> " + b + " [length = " + b.length() + ", size = " + b.size() + "].");
 		// TODO: validate parameters.
 		boolean interested = false;
 		for (int i = 0; i < b.size(); i++) {
@@ -63,7 +67,7 @@ public class Helper {
 				break;
 			}
 		}
-		System.out.println("a is interested in b? " + interested);
+		logger.debug("a is interested in b? " + interested);
 		return interested;
 	}
 }
