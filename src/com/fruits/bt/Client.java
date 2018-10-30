@@ -4,8 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Properties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Client {
+	static final Logger logger = LoggerFactory.getLogger(Client.class);
+	
 	public static String DOWNLOAD_DIR; // "D:\\TorrentDownload";
 	public static String DOWNLOAD_TASKS_FILE; // "D:\\TorrentDownload\\downloadTasks.tmp"
 
@@ -35,10 +39,10 @@ public class Client {
 		//REMOTE_PEER_ID = Helper.genClientId(); //props.getProperty("remote.peer.id");
 		
 		/*
-		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
+		logger.debug(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
 				+ new String(REMOTE_PEER_ID) + ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT + ".");
 				*/
-		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + 
+		logger.debug(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + 
 				new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ".");
 	}
 
@@ -48,11 +52,11 @@ public class Client {
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				System.out.println("System is shutting down.");
+				logger.debug("System is shutting down.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
 				client.stop();
-				System.out.println("Shutting down system spent " + (System.currentTimeMillis() - begin) + " ms.");
+				logger.debug("Shutting down system spent " + (System.currentTimeMillis() - begin) + " ms.");
 			}
 		});
 	}
@@ -82,7 +86,7 @@ public class Client {
 
 		connectionManager.start(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread thead, Throwable exception) {
-				System.out.println("PeerConnectionManager failed, we are going to fail the system.");
+				logger.debug("PeerConnectionManager failed, we are going to fail the system.");
 				exception.printStackTrace();
 				System.exit(0);
 			}
