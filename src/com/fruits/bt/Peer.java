@@ -1,7 +1,11 @@
 package com.fruits.bt;
 
+import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Map;
 
 public class Peer {
 	private InetSocketAddress address;
@@ -14,6 +18,51 @@ public class Peer {
 	public Peer() {
 	}
 
+	public static byte[] createPeerId() {
+		ByteBuffer buffer = ByteBuffer.allocate(20);
+		buffer.put("-FRT-".getBytes());
+
+		String ip = "";
+		try {
+			ip = InetAddress.getLocalHost().getHostAddress();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Map<String, String> env = System.getenv();
+		String userDomain = env.get("USERDOMAIN");
+		String computerName = env.get("COMPUTERNAME");
+		String userName = env.get("USERNAME");
+
+		StringBuffer sb = new StringBuffer();
+
+		if (userDomain != null && userDomain.length() > 0) {
+			sb.append(userDomain).append("-");
+		}
+
+		if (computerName != null && computerName.length() > 0) {
+			sb.append(computerName).append("-");
+		}
+
+		if (userName != null && userName.length() > 0) {
+			sb.append(userName);
+		}
+
+		byte[] bytes = sb.toString().getBytes();
+		for (byte bt : bytes) {
+			if (buffer.hasRemaining()) {
+				buffer.put(bt);
+			} else {
+				break;
+			}
+		}
+
+		while (buffer.hasRemaining()) {
+			buffer.putInt((byte) '-');
+		}
+
+		return buffer.array();
+	}
+	
 	public InetSocketAddress getAddress() {
 		return address;
 	}

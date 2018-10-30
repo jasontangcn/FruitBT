@@ -21,18 +21,19 @@ public class Client {
 	private DownloadManager downloadManager;
 
 	static {
+		// Initialize it by JVM options
 		Properties props = System.getProperties();
 		DOWNLOAD_DIR = props.getProperty("download.dir");
 		DOWNLOAD_TASKS_FILE = props.getProperty("download.tasks.file");
 
 		LISTENER_DOMAIN = props.getProperty("listener.domain");
 		LISTENER_PORT = Integer.parseInt(props.getProperty("listener.port"));
-		PEER_ID = Helper.genClientId(); //props.getProperty("peer.id");
+		PEER_ID = Peer.createPeerId(); //props.getProperty("peer.id");
 
 		//REMOTE_DOMAIN = props.getProperty("remote.domain");
 		//REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
 		//REMOTE_PEER_ID = Helper.genClientId(); //props.getProperty("remote.peer.id");
-
+		
 		/*
 		System.out.println(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
 				+ new String(REMOTE_PEER_ID) + ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT + ".");
