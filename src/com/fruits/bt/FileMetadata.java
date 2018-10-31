@@ -92,9 +92,12 @@ public class FileMetadata implements Serializable {
 			logger.trace("Piece length: {}, sliceLength: {}.", pieceLength, sliceLength);
 			throw new RuntimeException("Piece length should not be less than slice length.");
 		}
-		//TODO: long->int?
-		int piecesSize = (int) fileLength / pieceLength;
-		int lastPieceLength = (int) fileLength % pieceLength;
+		// TODO: long->int?
+		// Serious bug: fileLength > Integer.MAX_VALUE, convert it to int, it is negative value.
+		//int piecesSize = (int) fileLength / pieceLength;
+		//int lastPieceLength = (int) fileLength % pieceLength;
+		int piecesSize = (int) (fileLength / pieceLength);
+		int lastPieceLength = (int) (fileLength % pieceLength);
 
 		pieces = new ArrayList<Piece>(piecesSize + ((lastPieceLength == 0) ? 0 : 1));
 

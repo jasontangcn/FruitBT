@@ -214,10 +214,17 @@ public class TorrentSeed implements Serializable {
 
 	@Override
 	public String toString() {
+		StringBuffer hashs = new StringBuffer();
+		hashs.append("[");
+		for(byte[] hash : this.pieceHashs) {
+			hashs.append(Utils.bytes2HexString(hash));
+			hashs.append(",");
+		}
+		hashs.append("]");
 		return "TorrentSeed [announce=" + announce + ", announceList=" + announceList + ",\n" + "creationDate=" + creationDate + ", createdBy=" + createdBy
-				+ ", comment=" + comment + ", encoding=" + encoding + ", pieceLength=" + pieceLength + ",\n" + "pieceHashs=" + pieceHashs + ",\n" + "pvt=" + pvt
+				+ ", comment=" + comment + ", encoding=" + encoding + ", pieceLength=" + pieceLength + ",\n" + "pieceHashs=" + hashs.toString() + ",\n" + "pvt=" + pvt
 				+ ", sliceLength=" + sliceLength + ", name=" + name + ", length=" + length + ", md5sum=" + md5sum + ",\n" + "fileInfos=" + fileInfos + ",\n"
-				+ "infoHash=" + infoHash + "]";
+				+ "infoHash=" + Utils.bytes2HexString(infoHash) + "]";
 	}
 
 	public static TorrentSeed parseSeedFile(String seedFilePath) throws IOException {
@@ -376,6 +383,7 @@ public class TorrentSeed implements Serializable {
 			throw new IOException(e);
 		}
 
+		logger.debug(seed.toString());
 		return seed;
 	}
 

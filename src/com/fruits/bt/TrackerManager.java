@@ -110,6 +110,7 @@ public class TrackerManager {
 		 */
 
 		// If fails, some servers return a plain text and BDecoder will throw InvalidBEncodingException.
+		logger.debug("Response from tracker server: {}.", new String(data));
 		Map<String, BEValue> resp = BDecoder.bdecode(ByteBuffer.wrap(data)).getMap();
 		// failure reason
 		// warnging message
@@ -130,8 +131,18 @@ public class TrackerManager {
 		
 		int incomplete = resp.get(TrackerManager.RESP_INCOMPLETE).getInt();
 		int complete = resp.get(TrackerManager.RESP_COMPLETE).getInt();
-		byte[] peersByte = resp.get(TrackerManager.RESP_PEERS).getBytes();
-
+		Object peersValue = resp.get(TrackerManager.RESP_PEERS).getValue();
+		
+		// TODO:
+		//     No peer: e5:peerslee.
+		//    One peer: e5:peers6:括 d醗
+		// Multi peers: e5:peers12:��
+		byte[] peersByte = null;
+		if(peersValue instanceof List) {
+			// for no peer, do nothing.
+		}else if(peersValue instanceof byte[]){ // for one or multi peers
+			peersByte = (byte[])peersValue;
+		}
 
 		if (peersByte != null && peersByte.length > 0) {
 			for (int i = 0; i < peersByte.length / 6; i++) {
@@ -155,6 +166,7 @@ public class TrackerManager {
 			}
 		}
 
+		logger.debug("Got peers, size: {}.", peers.size());
 		return peers;
 	}
 	// By default, 50 peers.

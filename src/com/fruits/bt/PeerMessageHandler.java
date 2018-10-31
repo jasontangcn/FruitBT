@@ -91,6 +91,7 @@ public class PeerMessageHandler {
 					return null;
 				}
 				if (readBuffer.hasRemaining()) {
+					logger.debug("This message is incomplete by once read, remaining : {}.", readBuffer.remaining());
 					return null;
 				}
 				this.lengthPrefix = readBuffer.getInt(0);
