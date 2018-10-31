@@ -3,7 +3,7 @@ package com.fruits.sample;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fruits.bt.TrackerManager;
+import com.fruits.bt.PeerFinder;
 
 public class LogbackTest {
 	static final Logger logger = LoggerFactory.getLogger(LogbackTest.class);

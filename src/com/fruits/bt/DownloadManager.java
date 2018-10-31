@@ -38,7 +38,7 @@ public class DownloadManager {
 	// 1. Start listener.
 	// 2. Accept connect from peers.
 	// 3. Upload slices to peers. 
-	private TrackerManager trackerManager = new TrackerManager(this);
+	private PeerFinder peerFinder = new PeerFinder(this);
 
 	private PiecePicker piecePicker;
 	private PeerConnectionManager connectionManager;
@@ -153,7 +153,7 @@ public class DownloadManager {
 		self.setInfoHashString(infoHash);
 		logger.info("Started download task: infoHash : {}, bitfield : {}.", infoHash, fileMetadata.getBitfield());
 
-		List<Peer> peers = trackerManager.getPeers(seed);
+		List<Peer> peers = peerFinder.getPeers(seed);
 		logger.debug("Got peers from tracker server : {} for {}.", peers, infoHash);
 
 		for (Peer peer : peers) {

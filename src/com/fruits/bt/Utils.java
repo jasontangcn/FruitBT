@@ -21,7 +21,7 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 
 public class Utils {
-	static final Logger logger = LoggerFactory.getLogger(TrackerManager.class);
+	static final Logger logger = LoggerFactory.getLogger(PeerFinder.class);
 	
 	public static byte[] getSHA1(byte[] data) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA1");

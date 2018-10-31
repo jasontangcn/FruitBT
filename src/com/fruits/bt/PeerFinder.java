@@ -26,8 +26,8 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 
 // TODO: Communicate with tracker server and get the peers from a torrent seed.
-public class TrackerManager {
-	static final Logger logger = LoggerFactory.getLogger(TrackerManager.class);
+public class PeerFinder {
+	static final Logger logger = LoggerFactory.getLogger(PeerFinder.class);
 	/*
 	 * info_hash
 	 * peer_id
@@ -81,7 +81,7 @@ public class TrackerManager {
 
 	private final DownloadManager downloadManager;
 
-	public TrackerManager(DownloadManager downloadManager) {
+	public PeerFinder(DownloadManager downloadManager) {
 		this.downloadManager = downloadManager;
 	}
 
@@ -122,16 +122,16 @@ public class TrackerManager {
 		// tracker id
 		// peers
 		String failureReason = null;
-		BEValue failureReasonValue = resp.get(TrackerManager.RESP_FAILURE_REASON);
+		BEValue failureReasonValue = resp.get(PeerFinder.RESP_FAILURE_REASON);
 		if(failureReasonValue != null) {
 			failureReason = failureReasonValue.getString();
 			logger.trace("failure reason: " + failureReason + ".");
 			throw new RuntimeException("Getting peers from trakcer failed, reason: " + failureReason + ".");
 		}
 		
-		int incomplete = resp.get(TrackerManager.RESP_INCOMPLETE).getInt();
-		int complete = resp.get(TrackerManager.RESP_COMPLETE).getInt();
-		Object peersValue = resp.get(TrackerManager.RESP_PEERS).getValue();
+		int incomplete = resp.get(PeerFinder.RESP_INCOMPLETE).getInt();
+		int complete = resp.get(PeerFinder.RESP_COMPLETE).getInt();
+		Object peersValue = resp.get(PeerFinder.RESP_PEERS).getValue();
 		
 		// TODO:
 		//     No peer: e5:peerslee.
@@ -234,15 +234,15 @@ public class TrackerManager {
 		long left = seed.getRealLength() - downloaded;
 		StringBuffer sb = new StringBuffer();
 		sb.append(seed.getAnnounce()).append("?")
-		    .append(TrackerManager.PARAM_INFO_HASH).append("=").append(infoHash).append("&")
-				.append(TrackerManager.PARAM_PEER_ID).append("=").append(peerId).append("&")
-				.append(TrackerManager.PARAM_UPLOADED).append("=").append(uploaded).append("&")
-				.append(TrackerManager.PARAM_DOWNLOADED).append("=").append(downloaded).append("&")
-				.append(TrackerManager.PARAM_LEFT).append("=").append(left).append("&")
-				.append(TrackerManager.PARAM_COMPACT).append("=").append(TrackerManager.COMPACT).append("&")
-				.append(TrackerManager.PARAM_NUM_WANT).append("=").append(TrackerManager.NUM_WANT).append("&")
-				.append(TrackerManager.PARAM_PORT).append("=").append(Client.LISTENER_PORT).append("&")
-				.append(TrackerManager.PARAM_EVENT).append("=");
+		    .append(PeerFinder.PARAM_INFO_HASH).append("=").append(infoHash).append("&")
+				.append(PeerFinder.PARAM_PEER_ID).append("=").append(peerId).append("&")
+				.append(PeerFinder.PARAM_UPLOADED).append("=").append(uploaded).append("&")
+				.append(PeerFinder.PARAM_DOWNLOADED).append("=").append(downloaded).append("&")
+				.append(PeerFinder.PARAM_LEFT).append("=").append(left).append("&")
+				.append(PeerFinder.PARAM_COMPACT).append("=").append(PeerFinder.COMPACT).append("&")
+				.append(PeerFinder.PARAM_NUM_WANT).append("=").append(PeerFinder.NUM_WANT).append("&")
+				.append(PeerFinder.PARAM_PORT).append("=").append(Client.LISTENER_PORT).append("&")
+				.append(PeerFinder.PARAM_EVENT).append("=");
 
 		String status = "";
 		DownloadState downloadStatus = task.getState();
