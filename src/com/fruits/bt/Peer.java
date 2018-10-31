@@ -64,7 +64,6 @@ public class Peer {
 		while (buffer.hasRemaining()) {
 			buffer.putInt((byte) '-');
 		}
-
 		return buffer.array();
 	}
 	
