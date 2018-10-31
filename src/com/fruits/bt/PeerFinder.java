@@ -15,8 +15,13 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +44,7 @@ public class PeerFinder {
 	 *   Usually it's 1. 
 	
 	 * event
-	 *   started��completed��stopped
+	 *   started, completed, stopped
 	
 	 * ip
 	 * numwant
@@ -81,6 +86,8 @@ public class PeerFinder {
 
 	private final DownloadManager downloadManager;
 
+	private Map<String, ScheduledExecutorService> pingTrackerTasks = new HashMap<String, ScheduledExecutorService>();
+	
 	public PeerFinder(DownloadManager downloadManager) {
 		this.downloadManager = downloadManager;
 	}
@@ -89,7 +96,15 @@ public class PeerFinder {
 	public List<Peer> getPeers(TorrentSeed seed) throws MalformedURLException, IOException {
 		List<Peer> peers = new ArrayList<Peer>();
 		
-		URL url = new URL(this.createRequestURL(seed));
+		String infoHashString = Utils.bytes2HexString(seed.getInfoHash());
+		StringBuffer request = this.createBaseURL(seed);
+		if(!this.pingTrackerTasks.containsKey(infoHashString)) {
+			request.append("&").append(PeerFinder.PARAM_EVENT).append("=started");
+		}
+
+		logger.trace("Tracker request: {}.", request.toString());
+		
+		URL url = new URL(request.toString());
 		URLConnection conn = url.openConnection();
 		conn.setDoOutput(true);
 		conn.connect();
@@ -131,6 +146,7 @@ public class PeerFinder {
 		
 		int incomplete = resp.get(PeerFinder.RESP_INCOMPLETE).getInt();
 		int complete = resp.get(PeerFinder.RESP_COMPLETE).getInt();
+		int interval = resp.get(PeerFinder.RESP_INTERVAL).getInt();
 		Object peersValue = resp.get(PeerFinder.RESP_PEERS).getValue();
 		
 		// TODO:
@@ -166,8 +182,66 @@ public class PeerFinder {
 			}
 		}
 		logger.debug("Got peers, size: {}.", peers.size());
+		
+		// TODO:
+		// Stop the ping task in run method?
+		if(!this.pingTrackerTasks.containsKey(infoHashString)) {
+			ScheduledExecutorService pingTask = Executors.newSingleThreadScheduledExecutor();
+			pingTask.scheduleAtFixedRate(new Runnable() {
+				public void run() {
+					StringBuffer request = createBaseURL(seed);
+					DownloadTask task = downloadManager.getDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
+					DownloadState downloadStatus = task.getState();
+					switch (downloadStatus) {
+					case PENDING:
+					case STARTED:
+						sendGetRequest(request.toString());
+						break;
+					case STOPPED:
+						request.append("&").append(PeerFinder.PARAM_EVENT).append("=stopped");
+						sendGetRequest(request.toString());
+						break;
+					case COMPLETED:
+						request.append("&").append(PeerFinder.PARAM_EVENT).append("=completed");
+						sendGetRequest(request.toString());
+						break;
+					}
+
+				}
+			}, interval, interval, TimeUnit.SECONDS);
+			this.pingTrackerTasks.put(infoHashString, pingTask);
+		}
+		
 		return peers;
 	}
+	
+	public void removePingTask(String infoHash) {
+		ScheduledExecutorService task = this.pingTrackerTasks.remove(infoHash);
+		if(task != null)
+			task.shutdown();
+	}
+	
+	public void removePingTrackerTasks() {
+		Iterator<String> iterator = this.pingTrackerTasks.keySet().iterator();
+		while(iterator.hasNext()) {
+			String infoHash = iterator.next();
+			this.removePingTask(infoHash);
+		}
+	}
+	
+	public void sendGetRequest(String requestURL) {
+		try {
+			logger.debug("Ping Tracker server, request URL: {}.", requestURL);
+			URL url = new URL(requestURL);
+			URLConnection conn = url.openConnection();
+			conn.setDoOutput(false);
+			conn.setDoInput(false);
+			conn.connect();
+		}catch(IOException e) {
+			logger.error("", e);
+		}
+	}
+	
 	// By default, 50 peers.
 	/*
 	public List<Peer> getPeers(TorrentSeed seed) {
@@ -212,7 +286,7 @@ public class PeerFinder {
 	 * 
 	 * 
 	 */
-	private String createRequestURL(TorrentSeed seed) {
+	private StringBuffer createBaseURL(TorrentSeed seed) {
 		String infoHash = "";
 		try {
 			infoHash = URLEncoder.encode(new String(seed.getInfoHash(), "ISO-8859-1"), "ISO-8859-1");
@@ -241,27 +315,7 @@ public class PeerFinder {
 				.append(PeerFinder.PARAM_LEFT).append("=").append(left).append("&")
 				.append(PeerFinder.PARAM_COMPACT).append("=").append(PeerFinder.COMPACT).append("&")
 				.append(PeerFinder.PARAM_NUM_WANT).append("=").append(PeerFinder.NUM_WANT).append("&")
-				.append(PeerFinder.PARAM_PORT).append("=").append(Client.LISTENER_PORT).append("&")
-				.append(PeerFinder.PARAM_EVENT).append("=");
-
-		String status = "";
-		DownloadState downloadStatus = task.getState();
-		switch (downloadStatus) {
-		case PENDING:
-		case STARTED:
-			status = "started";
-			break;
-		case STOPPED:
-			status = "stopped";
-			break;
-		case COMPLETED:
-			status = "completed";
-			break;
-		}
-
-		sb.append(status);
-
-		logger.trace("Tracker request: {}.", sb.toString());
-		return sb.toString();
+				.append(PeerFinder.PARAM_PORT).append("=").append(Client.LISTENER_PORT);
+		return sb;
 	}
 }
