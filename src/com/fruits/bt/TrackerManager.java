@@ -165,7 +165,6 @@ public class TrackerManager {
 				peers.add(peer);
 			}
 		}
-
 		logger.debug("Got peers, size: {}.", peers.size());
 		return peers;
 	}
