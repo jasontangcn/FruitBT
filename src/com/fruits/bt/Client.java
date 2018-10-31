@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 public class Client {
 	static final Logger logger = LoggerFactory.getLogger(Client.class);
-	
+
 	public static String DOWNLOAD_DIR; // "D:\\TorrentDownload";
 	public static String DOWNLOAD_TASKS_FILE; // "D:\\TorrentDownload\\downloadTasks.tmp"
 
@@ -37,7 +37,7 @@ public class Client {
 		//REMOTE_DOMAIN = props.getProperty("remote.domain");
 		//REMOTE_PORT = Integer.parseInt(props.getProperty("remote.port"));
 		//REMOTE_PEER_ID = Helper.genClientId(); //props.getProperty("remote.peer.id");
-		
+
 		/*
 		logger.trace(DOWNLOAD_DIR + ", " + DOWNLOAD_TASKS_FILE + ", " + new String(PEER_ID) + ", " + LISTENER_PORT + ", " + LISTENER_DOMAIN + ", "
 				+ new String(REMOTE_PEER_ID) + ", " + REMOTE_DOMAIN + ", " + REMOTE_PORT + ".");
@@ -79,10 +79,10 @@ public class Client {
 
 		/*
 		 * This class implements an IP Socket Address (IP address + port number)
-     * It can also be a pair (hostname + port number), in which case an attempt
-     * will be made to resolve the hostname. If resolution fails then the address
-     * is said to be <I>unresolved</I> but can still be used on some circumstances
-     * like connecting through a proxy.
+		 * It can also be a pair (hostname + port number), in which case an attempt
+		 * will be made to resolve the hostname. If resolution fails then the address
+		 * is said to be <I>unresolved</I> but can still be used on some circumstances
+		 * like connecting through a proxy.
 		 */
 		this.downloadManager = new DownloadManager();
 		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT), downloadManager,
@@ -94,7 +94,6 @@ public class Client {
 				});
 		downloadManager.setConnectionManager(connectionManager);
 
-		
 		//downloadManager.addDownloadTask("D:\\TorrentDownload5\\129952FBCED69192FB110391D6AA20F7E7AFAA80.torrent");
 		downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
