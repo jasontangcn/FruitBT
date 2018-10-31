@@ -137,6 +137,7 @@ public class TrackerManager {
 		//     No peer: e5:peerslee.
 		//    One peer: e5:peers6:括 d醗
 		// Multi peers: e5:peers12:��
+		
 		byte[] peersByte = null;
 		if(peersValue instanceof List) {
 			// for no peer, do nothing.
