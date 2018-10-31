@@ -54,7 +54,7 @@ public class Client {
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
 				system.stop();
-				logger.error("Shutting down the system spent " + (System.currentTimeMillis() - begin) + " ms.");
+				logger.error("Shutting down the system spent {} ms.", (System.currentTimeMillis() - begin));
 			}
 		});
 	}
