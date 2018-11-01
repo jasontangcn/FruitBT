@@ -147,6 +147,7 @@ public class PeerFinder {
 			throw new RuntimeException("Getting peers from trakcer failed, reason: " + failureReason + ".");
 		}
 		
+		// reponse may have no these fields.
 		BEValue incompleteValue = resp.get(PeerFinder.RESP_INCOMPLETE);
 		int incomplete = -1;
 		if(incompleteValue != null)
