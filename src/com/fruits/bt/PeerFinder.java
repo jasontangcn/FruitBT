@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +89,8 @@ public class PeerFinder {
 
 	private Map<String, ScheduledExecutorService> pingTrackerTasks = new HashMap<String, ScheduledExecutorService>();
 	
+	private Random random = new Random();
+	
 	public PeerFinder(DownloadManager downloadManager) {
 		this.downloadManager = downloadManager;
 	}
@@ -144,9 +147,21 @@ public class PeerFinder {
 			throw new RuntimeException("Getting peers from trakcer failed, reason: " + failureReason + ".");
 		}
 		
-		int incomplete = resp.get(PeerFinder.RESP_INCOMPLETE).getInt();
-		int complete = resp.get(PeerFinder.RESP_COMPLETE).getInt();
-		int interval = resp.get(PeerFinder.RESP_INTERVAL).getInt();
+		BEValue incompleteValue = resp.get(PeerFinder.RESP_INCOMPLETE);
+		int incomplete = -1;
+		if(incompleteValue != null)
+			incomplete = incompleteValue.getInt();
+		
+		BEValue completeValue = resp.get(PeerFinder.RESP_COMPLETE);
+		int complete = -1;
+		if(completeValue != null)
+			complete = completeValue.getInt();
+		
+		BEValue intervalValue = resp.get(PeerFinder.RESP_INTERVAL);
+		int interval = 60;
+		if(intervalValue != null)
+			interval = intervalValue.getInt();
+
 		Object peersValue = resp.get(PeerFinder.RESP_PEERS).getValue();
 		
 		// TODO:
@@ -189,6 +204,7 @@ public class PeerFinder {
 			ScheduledExecutorService pingTask = Executors.newSingleThreadScheduledExecutor();
 			pingTask.scheduleAtFixedRate(new Runnable() {
 				public void run() {
+					logger.debug("PingTracker is running.");
 					StringBuffer request = createBaseURL(seed);
 					DownloadTask task = downloadManager.getDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 					DownloadState downloadStatus = task.getState();
@@ -302,8 +318,8 @@ public class PeerFinder {
 
 		DownloadTask task = this.downloadManager.getDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 		FileMetadata metadata = task.getFileMetadata();
-		long uploaded = metadata.getBytesWritten();
-		long downloaded = metadata.getBytesRead();
+		long downloaded = metadata.getBytesWritten();
+		long uploaded = metadata.getBytesRead();
 
 		long left = seed.getRealLength() - downloaded;
 		StringBuffer sb = new StringBuffer();
@@ -315,7 +331,10 @@ public class PeerFinder {
 				.append(PeerFinder.PARAM_LEFT).append("=").append(left).append("&")
 				.append(PeerFinder.PARAM_COMPACT).append("=").append(PeerFinder.COMPACT).append("&")
 				.append(PeerFinder.PARAM_NUM_WANT).append("=").append(PeerFinder.NUM_WANT).append("&")
-				.append(PeerFinder.PARAM_PORT).append("=").append(Client.LISTENER_PORT);
+				.append(PeerFinder.PARAM_PORT).append("=").append(Client.LISTENER_PORT).append("&")
+				.append(PeerFinder.PARAM_KEY).append("=").append(random.nextInt(1000));
+		
+		
 		return sb;
 	}
 }
