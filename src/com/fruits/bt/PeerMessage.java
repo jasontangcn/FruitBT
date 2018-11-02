@@ -239,7 +239,7 @@ public abstract class PeerMessage {
 
 		public ByteBuffer encode() {
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + NotInterestedMessage.BASE_SIZE);
-			messageBytes.putInt(HaveMessage.BASE_SIZE);
+			messageBytes.putInt(NotInterestedMessage.BASE_SIZE);
 			messageBytes.put(PeerMessage.NOT_INTERESTED_MESSAGE_ID);
 			messageBytes.flip();
 			return messageBytes;
@@ -273,6 +273,10 @@ public abstract class PeerMessage {
 			this.pieceIndex = pieceIndex;
 		}
 
+		public String toString() {
+			return "HaveMessage: Piece index: " + this.pieceIndex + ".";
+		}
+		
 		public ByteBuffer encode() {
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + HaveMessage.BASE_SIZE);
 			messageBytes.putInt(HaveMessage.BASE_SIZE);
@@ -507,6 +511,10 @@ public abstract class PeerMessage {
 			this.length = length;
 		}
 
+		public String toString() {
+			return "CancelMessage: index = " + this.index + ", begin = " + begin + ", length = " + this.length;
+		}
+		
 		public ByteBuffer encode() {
 			ByteBuffer messageBytes = ByteBuffer.allocate(4 + CancelMessage.BASE_SIZE);
 			messageBytes.putInt(CancelMessage.BASE_SIZE);

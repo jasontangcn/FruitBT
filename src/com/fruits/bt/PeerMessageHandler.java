@@ -87,6 +87,7 @@ public class PeerMessageHandler {
 				int n = socketChannel.read(readBuffer); // IOException
 				if (n == -1) {
 					logger.warn("Peer closed this connection peacefully.");
+					//TODO:
 					this.connection.selfClose();
 					return null;
 				}

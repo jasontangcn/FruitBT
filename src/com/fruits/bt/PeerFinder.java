@@ -192,6 +192,10 @@ public class PeerFinder {
 				logger.debug("ip: {}.", peerIP.getHostAddress());
 				logger.debug("port: {}.", String.valueOf(peerPort));
 				
+				// TODO:
+				// fliter out myself.
+				if(Client.LISTENER_DOMAIN.equals(peerIP.getHostAddress()) && (Client.LISTENER_PORT == peerPort))
+					continue;
 				Peer peer = new Peer();
 				peer.setAddress(new InetSocketAddress(peerIP, peerPort));
 				peers.add(peer);
@@ -212,15 +216,15 @@ public class PeerFinder {
 					switch (downloadStatus) {
 					case PENDING:
 					case STARTED:
-						sendGetRequest(request.toString());
+						//sendGetRequest(request.toString());
 						break;
 					case STOPPED:
 						request.append("&").append(PeerFinder.PARAM_EVENT).append("=stopped");
-						sendGetRequest(request.toString());
+						//sendGetRequest(request.toString());
 						break;
 					case COMPLETED:
 						request.append("&").append(PeerFinder.PARAM_EVENT).append("=completed");
-						sendGetRequest(request.toString());
+						//sendGetRequest(request.toString());
 						break;
 					}
 

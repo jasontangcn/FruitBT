@@ -95,10 +95,12 @@ public class PeerConnection {
 			this.self.setInfoHash(infoHash);
 			this.state = State.IN_HANDSHAKE_MESSAGE_RECEIVED;
 			logger.debug("Status : {}, received handshake message [{}].", this.state, message);
-			
-			writeMessage(); // Next read status must be IN_HANDSHAKE_MESSAGE_SENT.
 		}
 
+		if (this.state == State.IN_HANDSHAKE_MESSAGE_RECEIVED) {
+			writeMessage();
+		}
+		
 		if (this.state == State.IN_HANDSHAKE_MESSAGE_SENT) {
 			logger.debug("Status : {}, read bitfield message.", this.state);
 			PeerMessage message = this.messageHandler.readMessage();
@@ -117,11 +119,13 @@ public class PeerConnection {
 
 				this.state = State.IN_BITFIELD_RECEIVED;
 				logger.debug("Status : {}, received bitfield message [{}].", this.state, message);
-				
-				writeMessage();
 			}
 		}
-
+		
+		if (this.state == State.IN_BITFIELD_RECEIVED) {
+			writeMessage();
+		}
+		
 		if (this.state == State.OUT_CONNECTED) {
 			writeMessage();
 		}
@@ -135,7 +139,9 @@ public class PeerConnection {
 			this.peer.setInfoHash(message.getInfoHash());
 			this.state = State.OUT_HANDSHAKE_MESSAGE_RECEIVED;
 			logger.debug("Status : {}, received handshake message [{}].", this.state, message);
-			
+		}
+		
+		if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
 			writeMessage();
 		}
 
@@ -409,6 +415,10 @@ public class PeerConnection {
 				}
 				logger.trace("Status : {}, completed writing bitfield message to peer.", this.state);
 			}
+		}
+		
+		if (isHandshakeCompleted()) {
+			this.startSendMessages();
 		}
 	}
 

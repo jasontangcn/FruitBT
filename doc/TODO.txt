@@ -32,3 +32,18 @@
    so the PeerMessageManager throws exception to Client, so fail the sytem.
 6. JUnit to test APIs.
    
+
+  2018-11-1
+  =========
+  1. 8888 running a seed
+     6666 try to download file.
+     endless 'ready to write' and console out of memory.
+  
+  2. 8888 running as a seed
+     BitComet try to download, is failing.
+     
+ 
+  2018-11-2
+  =========
+  Added hash validation.    
+ 

@@ -95,7 +95,8 @@ public class Client {
 		downloadManager.setConnectionManager(connectionManager);
 
 		//downloadManager.addDownloadTask("D:\\TorrentDownload5\\129952FBCED69192FB110391D6AA20F7E7AFAA80.torrent");
-		downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
+		//downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
+		downloadManager.seeding("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
 		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
 	}
 

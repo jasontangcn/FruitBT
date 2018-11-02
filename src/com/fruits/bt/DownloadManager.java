@@ -136,6 +136,11 @@ public class DownloadManager {
 		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 	}
 
+	public void seeding(String seedFilePath) throws IOException {
+		TorrentSeed seed = TorrentSeed.parseSeedFile(seedFilePath);
+		peerFinder.getPeers(seed);
+	}
+	
 	public DownloadTask getDownloadTask(String infoHash) {
 		return this.downloadTasks.get(infoHash);
 	}
