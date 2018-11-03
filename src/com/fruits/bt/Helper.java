@@ -67,7 +67,7 @@ public class Helper {
 				break;
 			}
 		}
-		logger.debug("a is interested in b? {}", interested);
+		logger.trace("a is interested in b? {}", interested);
 		return interested;
 	}
 }

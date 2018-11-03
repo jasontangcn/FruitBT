@@ -179,6 +179,10 @@ public class PeerMessageHandler {
 		return messageBytesToWrite;
 	}
 
+	public PeerMessage getMessageToSend() {
+		return this.messageToSend;
+	}
+	
 	public boolean isSendingInProgress() {
 		return this.state == SendState.SENDING;
 	}

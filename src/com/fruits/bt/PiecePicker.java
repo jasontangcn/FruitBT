@@ -60,7 +60,7 @@ public class PiecePicker {
 	}
 
 	public void peerHaveNewPiece(String infoHash, int index) {
-		logger.debug("PiecePicker: peerHaveNewPiece -> infoHash : {}, index = {}.", infoHash, index);
+		logger.trace("PiecePicker: peerHaveNewPiece -> infoHash : {}, index = {}.", infoHash, index);
 
 		Map<Integer, Integer> rarestFirst = this.rarestFirsts.get(infoHash);
 		if (rarestFirst == null) {
@@ -227,7 +227,7 @@ public class PiecePicker {
 					}
 				}
 			} else { /* < 1 , sequential */
-				logger.debug("Using sequential strategy.");
+				logger.trace("Using sequential strategy.");
 				// TODO: Multi connection conflicts, we need to pick next index that is not in the progress of downloading.
 				//       Scenarios:
 				//       (1) one peer hangs, can not download it from other peers.
@@ -260,7 +260,7 @@ public class PiecePicker {
 			this.batchRequests.get(infoHash).add(request);
 		}
 
-		logger.debug("PiecePicker: next index to request -> {}.", request.getIndex());
+		logger.debug("PiecePicker: current index to request -> {}.", request.getIndex());
 
 		// Now request is a new index 
 		// or a request(from unchoking message) that has completed a batch(received piece)
@@ -268,6 +268,7 @@ public class PiecePicker {
 		List<Slice> slices = metadata.getNextBatchIncompletedSlices(request.getIndex(), PiecePicker.BATCH_REQUEST_SIZE);
 
 		if (slices.size() != 0) {
+			logger.debug("Current batch for index = {} done, request next batch, batch size: {}", request.getIndex(), slices.size());
 			if (percentCompleted > 0.9) {
 				// TODO: Implement the 'End Game' mode.
 			}
@@ -279,12 +280,12 @@ public class PiecePicker {
 			for (Slice slice : slices) {
 				messages.add(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 			}
-			logger.trace("Batch RequestMessage size : {}.", slices.size());
+			//logger.trace("Batch RequestMessage size : {}.", slices.size());
 			connection.addMessageToSend(messages);
 		} else {
 			// This pieces have been completed, try to find next one to download.
 			this.removeBatchRequest(infoHash, connectionId);
-			logger.debug("One batch requet is done, proceed to request more.");
+			logger.debug("Current index = {} is done, proceed to request next piece.", request.getIndex());
 			requestMoreSlices(connection);
 		}
 	}

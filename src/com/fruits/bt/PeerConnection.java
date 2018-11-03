@@ -423,7 +423,7 @@ public class PeerConnection {
 	}
 
 	public void startSendMessages() {
-		logger.debug("Status : {}, sending messages in queue.", this.state);
+		logger.trace("Status : {}, sending messages in queue.", this.state);
 		for (;;) {
 			if (!messageHandler.isSendingInProgress()) { // Nothing sent yet or completed sending a message.
 				PeerMessage message = this.messagesToSend.poll();
@@ -438,14 +438,14 @@ public class PeerConnection {
 						return;
 					}
 				}
-				logger.trace("Got a message from queue.");
+				logger.trace("Got a message from queue {}.", message);
 				messageHandler.setMessageToSend(message);
 			} else {
-				logger.trace("Status : {}, send remaining part of current message.", this.state);
+				logger.warn("Status : {}, send remaining part of current message {}.", this.state, messageHandler.getMessageToSend());
 			}
 			messageHandler.writeMessage();
 			if (messageHandler.isSendingInProgress()) {
-				logger.trace("Status : {}, only part of the message was written to peer.", this.state);
+				logger.warn("Status : {}, only part of the message {} was written to peer.", this.state, messageHandler.getMessageToSend());
 				try {
 					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 					break;
@@ -456,7 +456,7 @@ public class PeerConnection {
 				}
 			} else {
 				this.timeLastWrite = System.currentTimeMillis();
-				logger.trace("Status : {}, completed writing a message to peer.", this.state);
+				logger.debug("Status : {}, completed writing a message [{}] to peer.", this.state, messageHandler.getMessageToSend());
 			}
 		}
 	}
@@ -477,7 +477,7 @@ public class PeerConnection {
 			logger.warn("Status : {}, failed to add outgoing messages to queue : {}.", this.state, messages);
 			logger.error("", e);
 		}
-		logger.debug("Status : {}, outgoing messages for peer {} added to queue {}.", this.state, this.peer.getAddress(),  messages);
+		logger.debug("Status : {}, outgoing messages for {} added to queue {}.", this.state, this.peer.getAddress(),  messages);
 
 		if (isHandshakeCompleted()) {
 			this.startSendMessages();

@@ -159,7 +159,7 @@ public class DownloadManager {
 		logger.info("Started download task: infoHash : {}, bitfield : {}.", infoHash, fileMetadata.getBitfield());
 
 		List<Peer> peers = peerFinder.getPeers(seed);
-		logger.debug("Got peers from tracker server : {} for {}.", peers, infoHash);
+		logger.trace("Got peers from tracker server : {} for {}.", peers, infoHash);
 
 		for (Peer peer : peers) {
 			connectionManager.createOutgoingConnection(self, peer); // create may fail and get a NULL object, no problem, just ignore failed peer.

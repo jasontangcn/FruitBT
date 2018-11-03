@@ -296,7 +296,8 @@ public class PeerConnectionManager implements Runnable {
 	// For outgoing connection: the connection may not finish connection yet.
 	// For incoming connection: the connection at least has been accepted.
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
-		logger.debug("New connection is created, outgoing connection? [{}], infoHash = {}, {}.", connection.isOutgoingConnection(), infoHash, connection);
+		logger.debug("New connection is created, outgoing connection? [{}], [{}]->[{}].", connection.isOutgoingConnection(), connection.getSelf().getAddress(), connection.getPeer().getAddress());
+		logger.trace("New connection is created, outgoing connection? [{}], infoHash = {}, {}.", connection.isOutgoingConnection(), infoHash, connection);
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		if (connections == null) {
 			connections = new ArrayList<PeerConnection>();

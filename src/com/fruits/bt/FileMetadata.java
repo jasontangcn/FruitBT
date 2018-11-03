@@ -200,7 +200,6 @@ public class FileMetadata implements Serializable {
 				try {
 					fileChannel.position(pos); // Horrible bug! Did not set position.
 					fileChannel.read(buffer);
-					logger.debug("Reading slice, completed? {}, index = {}, begin = {}, data read: {}", slice.isCompleted(), slice.getIndex(), slice.getBegin(), buffer.position());
 					buffer.flip();
 					data.put(buffer);
 				} catch (IOException e) {
@@ -307,8 +306,6 @@ public class FileMetadata implements Serializable {
 			
 			ByteBuffer pieceData = ByteBuffer.allocate(n);
 			
-			logger.debug("Preparing hash validation, slice size : {}, data length: {}.", slices.size(), n); 
-			
 			for(Slice slice : slices) {
 				ByteBuffer sliceData = this.readSlice(slice);
 				//logger.debug("Preparing hash validation, slice index {}, begin {}, data read {}", slice.getIndex(), slice.getBegin(), sliceData.limit());
@@ -316,22 +313,22 @@ public class FileMetadata implements Serializable {
 			}
 			
 			if(!pieceData.hasRemaining()) {
-				logger.debug("Completely read the data of piece index = {}, length = {}", index, pieceData.limit());
+				logger.trace("Completely read the data of piece index = {}, length = {}", index, pieceData.limit());
 				try {
 				  byte[] sha1Hash = Utils.getSHA1(pieceData.array());
-				  logger.debug("Piece index = {}, hash = {}.", index, Utils.bytes2HexString(sha1Hash));
+				  logger.trace("Piece index = {}, hash = {}.", index, Utils.bytes2HexString(sha1Hash));
 				  byte[] hashFromSeed = this.pieces.get(index).getSha1hash();
-				  logger.debug("Piece index = {}, hash from seed = {}.", index, Utils.bytes2HexString(hashFromSeed));
+				  logger.trace("Piece index = {}, hash from seed = {}.", index, Utils.bytes2HexString(hashFromSeed));
 				  if(!Arrays.equals(sha1Hash, hashFromSeed)) {
-				  	logger.debug("Piece index = {}, hash validation failed.", index, new Exception("Hash validation failed, discarded this piece."));
+				  	logger.warn("[Hash validation] piece index = {} failed.", index, new Exception("Discarded this piece."));
 				  }else {
-				  	logger.debug("Piece index = {}, hash validation succeeded.", index);
+				  	logger.trace("Piece index = {}, hash validation succeeded.", index);
 				  }
 				}catch(NoSuchAlgorithmException ae) {
 					logger.error("", ae);
 				}
 			}else {
-				logger.debug("Partial data of piece index = {} can not be read, remaining = {}", index, pieceData.remaining());
+				logger.error("[Hash valication] partial data of piece[index: {}] can not read, remaining = {}", index, pieceData.remaining());
 			}
 			
 			piecesCompleted++;

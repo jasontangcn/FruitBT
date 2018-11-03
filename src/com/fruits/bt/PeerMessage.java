@@ -445,7 +445,7 @@ public abstract class PeerMessage {
 		}
 
 		public String toString() {
-			return "PieceMessage: index = " + this.index + ", begin = " + begin;
+			return "PieceMessage: index = **" + this.index + "**, begin = **" + begin + "**";
 		}
 		
 		public ByteBuffer encode() {
