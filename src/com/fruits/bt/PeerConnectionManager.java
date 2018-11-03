@@ -336,9 +336,10 @@ public class PeerConnectionManager implements Runnable {
 	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
-			logger.trace("Wakening the selector.");
+			//logger.trace("Wakening the selector.");
 			selector.wakeup();
-			logger.trace("Registering channel : {}, ops = {}, attachment = {}.", socketChannel, interestOps(ops), attachment);
+			//TODO: most time, this debut is not useful.
+			//logger.trace("Registering channel : {}, ops = {}, attachment = {}.", socketChannel, interestOps(ops), attachment);
 			return socketChannel.register(selector, ops, attachment); // lots of exception may be thrown.
 		} finally {
 			selectorLock.unlock();

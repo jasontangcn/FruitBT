@@ -228,10 +228,31 @@ public class PiecePicker {
 				}
 			} else { /* < 1 , sequential */
 				logger.debug("Using sequential strategy.");
-				index = indexes.get(0);
+				// TODO: Multi connection conflicts, we need to pick next index that is not in the progress of downloading.
+				//       Scenarios:
+				//       (1) one peer hangs, can not download it from other peers.
+				List<BatchRequest> requests = this.batchRequests.get(infoHash);
+				for(int j = 0; j < indexes.size(); j++) {
+					boolean downloading = false;
+					for(BatchRequest req : requests) {
+						if(req.getIndex() == indexes.get(j).intValue()) {
+							downloading = true;
+							break;
+						}
+					}
+					if(downloading) {
+						continue;
+					}else {
+						index = indexes.get(j).intValue();
+						break;
+					}
+				}
 			}
 
 			logger.trace("PiecePicker: picked a new piece to request, index = {}.", index);
+			if(index == -1) {
+				return;
+			}
 			// Finally find a index to request.
 			request = new BatchRequest();
 			request.setConnectionId(connectionId);

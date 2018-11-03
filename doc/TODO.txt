@@ -45,5 +45,13 @@
  
   2018-11-2
   =========
-  Added hash validation.    
+  Added hash validation.  
+  
+  
+  2018-11-3
+  =========
+  Downloading file from BitComet& QQ downloader, check the log.
+  
+  
+    
  

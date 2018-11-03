@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -188,7 +190,7 @@ public class FileMetadata implements Serializable {
 					started = true;
 					// write how many bytes to this file?
 					pos = startPos - info.getStartPos(); // start position in current file.
-					bytesRead = (info.getEndPos() - startPos + 1); // at most bytes to write.
+					bytesRead = (info.getEndPos() - startPos + 1); // at most bytes to read.
 				}
 			}
 			if (pos != -1) {
@@ -196,7 +198,9 @@ public class FileMetadata implements Serializable {
 				ByteBuffer buffer = ByteBuffer.allocate(size);
 				FileChannel fileChannel = info.getFileChannel();
 				try {
+					fileChannel.position(pos); // Horrible bug! Did not set position.
 					fileChannel.read(buffer);
+					logger.debug("Reading slice, completed? {}, index = {}, begin = {}, data read: {}", slice.isCompleted(), slice.getIndex(), slice.getBegin(), buffer.position());
 					buffer.flip();
 					data.put(buffer);
 				} catch (IOException e) {
@@ -278,6 +282,7 @@ public class FileMetadata implements Serializable {
 				FileChannel fileChannel = info.getFileChannel();
 				try {
 					fileChannel.write(ByteBuffer.wrap(buffer), pos); // TODO: Perf Improvement!
+					fileChannel.force(true); // TODO: more research?
 				} catch (IOException e) {
 					logger.error("", e);
 					// If write fails, ignore it, pls. never continue to update the metadata of pieces.
@@ -294,6 +299,41 @@ public class FileMetadata implements Serializable {
 		this.pieces.get(index).setSliceCompleted(begin);
 		boolean isPieceCompleted = pieces.get(index).isAllSlicesCompleted();
 		if (isPieceCompleted) {
+			List<Slice> slices = pieces.get(index).getSlices();
+			int n = 0;
+			for(Slice slice : slices) {
+				n += slice.getLength();
+			}
+			
+			ByteBuffer pieceData = ByteBuffer.allocate(n);
+			
+			logger.debug("Preparing hash validation, slice size : {}, data length: {}.", slices.size(), n); 
+			
+			for(Slice slice : slices) {
+				ByteBuffer sliceData = this.readSlice(slice);
+				//logger.debug("Preparing hash validation, slice index {}, begin {}, data read {}", slice.getIndex(), slice.getBegin(), sliceData.limit());
+				pieceData.put(sliceData);
+			}
+			
+			if(!pieceData.hasRemaining()) {
+				logger.debug("Completely read the data of piece index = {}, length = {}", index, pieceData.limit());
+				try {
+				  byte[] sha1Hash = Utils.getSHA1(pieceData.array());
+				  logger.debug("Piece index = {}, hash = {}.", index, Utils.bytes2HexString(sha1Hash));
+				  byte[] hashFromSeed = this.pieces.get(index).getSha1hash();
+				  logger.debug("Piece index = {}, hash from seed = {}.", index, Utils.bytes2HexString(hashFromSeed));
+				  if(!Arrays.equals(sha1Hash, hashFromSeed)) {
+				  	logger.debug("Piece index = {}, hash validation failed.", index, new Exception("Hash validation failed, discarded this piece."));
+				  }else {
+				  	logger.debug("Piece index = {}, hash validation succeeded.", index);
+				  }
+				}catch(NoSuchAlgorithmException ae) {
+					logger.error("", ae);
+				}
+			}else {
+				logger.debug("Partial data of piece index = {} can not be read, remaining = {}", index, pieceData.remaining());
+			}
+			
 			piecesCompleted++;
 		}
 

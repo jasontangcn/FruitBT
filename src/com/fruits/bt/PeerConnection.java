@@ -186,7 +186,7 @@ public class PeerConnection {
 
 			this.timeLastRead = System.currentTimeMillis();
 
-			logger.debug("PeerConnection->readMessage: Got a message from peer [{}].", message);
+			logger.debug("PeerConnection->readMessage: Got a message [{}] from peer {}.", message, this.peer.getAddress());
 
 			if (message instanceof KeepAliveMessage) {
 			} else if (message instanceof ChokeMessage) {
@@ -259,9 +259,9 @@ public class PeerConnection {
 			} else if (message instanceof PieceMessage) {
 				PieceMessage piece = (PieceMessage) message;
 				// TODO: Silent but the writing may fail.
+				logger.trace("PeerConnection->readMessage: Got a PieceMessage {}.", message);
 				this.downloadManager.writeSlice(self.getInfoHashString(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
 				this.downloadManager.getPiecePicker().sliceReceived(this);
-				logger.trace("PeerConnection->readMessage: Got a PieceMessage {}.", message);
 
 			} else if (message instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage) message;
@@ -477,7 +477,7 @@ public class PeerConnection {
 			logger.warn("Status : {}, failed to add outgoing messages to queue : {}.", this.state, messages);
 			logger.error("", e);
 		}
-		logger.debug("Status : {}, outgoing messages were added to queue : {}.", this.state, messages);
+		logger.debug("Status : {}, outgoing messages for peer {} added to queue {}.", this.state, this.peer.getAddress(),  messages);
 
 		if (isHandshakeCompleted()) {
 			this.startSendMessages();

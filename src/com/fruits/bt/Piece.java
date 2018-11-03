@@ -68,7 +68,7 @@ public class Piece implements Serializable {
 	}
 
 	// TODO: Check progress, if it's done validate the sha1hash.
-	public void checkCompletedPiece() {
+	public void validateHash() {
 
 	}
 
