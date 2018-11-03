@@ -33,24 +33,30 @@
 6. JUnit to test APIs.
    
 
-  2018-11-1
-  =========
-  1. 8888 running a seed
-     6666 try to download file.
-     endless 'ready to write' and console out of memory.
+ 2018-11-1
+ =========
+1. 8888 running a seed
+   6666 try to download file.
+   endless 'ready to write' and console out of memory.
+   [Fixed]
   
-  2. 8888 running as a seed
-     BitComet try to download, is failing.
-     
+2. 8888 running as a seed
+   BitComet try to download, is failing.
+   [Fixed] writeSlice bug and hash validation failed.
  
-  2018-11-2
-  =========
-  Added hash validation.  
+2018-11-2
+=========
+Added hash validation, now the implement is very rough, need redesign.  
   
+2018-11-3
+=========
+Downloading file from BitComet& QQ downloader, check the log.
+Need to design more cases to make sure the algorithm works.
   
-  2018-11-3
-  =========
-  Downloading file from BitComet& QQ downloader, check the log.
+2018-11-3
+=========
+Slices read/write is very rough, hash validation is just a toy, and no buffer management.
+
   
   
     
