@@ -194,4 +194,47 @@ public class PeerMessageHandler {
 	public float getWriteRate() {
 		return this.writeRate;
 	}
+	
+	/*
+	 * TODO: How Grizzly write.
+	 * 
+	 * public static long flushChannel(SocketChannel socketChannel, ByteBuffer bb, long writeTimeout) throws IOException {
+	     SelectionKey key = null;
+	     Selector writeSelector = null;
+	     int attempts = 0;
+	     int bytesProduced = 0;
+	     try{
+			   while (bb.hasRemaining()) {
+		       int len = socketChannel.write(bb);
+		       attempts++;
+		       if (len < 0){
+		          throw new EOFException();
+		       }
+		       bytesProduced += len;
+		       if (len == 0) {
+		         if (writeSelector == null){
+		           writeSelector = SelectorFactory.getSelector();
+		           if (writeSelector == null){
+		             // Continue using the main one
+		             continue;
+		           }
+		         }
+		         key = socketChannel.register(writeSelector, key.OP_WRITE);
+		         if (writeSelector.select(writeTimeout) == 0) {
+		           if (attempts > 2)
+		                throw new IOException("Client disconnected");
+		         } else {
+		           attempts--;
+		         }
+		       } else {
+		          attempts = 0;
+		       }
+		     }
+	     }
+     }finally{
+     }
+	 * 
+	 * 
+	 * 
+	 */
 }

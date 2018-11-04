@@ -53,11 +53,13 @@ Added hash validation, now the implement is very rough, need redesign.
 Downloading file from BitComet& QQ downloader, check the log.
 Need to design more cases to make sure the algorithm works.
   
-2018-11-3
+2018-11-4
 =========
 Slices read/write is very rough, hash validation is just a toy, and no buffer management.
 
-  
-  
-    
+Based on internet, not local IP's.
+
+NAT
+
+
  
