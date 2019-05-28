@@ -56,6 +56,6 @@ package com.fruits.bt.nat;
  * 
  * 
  */
-public class NATServer {
+public class UDPServer {
 
 }

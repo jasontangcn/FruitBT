@@ -62,4 +62,11 @@ Based on internet, not local IP's.
 NAT
 
 
+2018-11-5
+=========
+DHT
+Magnet
+
+
+
  
