@@ -227,6 +227,10 @@ public class TorrentSeed implements Serializable {
 				+ "infoHash=" + Utils.bytes2HexString(infoHash) + "]";
 	}
 
+	/*
+	 * Provide a .torrent file.
+	 * 
+	 */
 	public static TorrentSeed parseSeedFile(String seedFilePath) throws IOException {
 		ByteBuffer seedFile = Utils.readFile(seedFilePath);
 		if (seedFile == null)
