@@ -20,6 +20,13 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 
+/*
+ * Torrent seed example:
+ * d8:announce34:http://tracker.ydy.com:86/announce10:createdby13:BitComet/0.5813:creationdatei1117953113e8:encoding3:GBK4:infod6:lengthi474499162e4:name51:05.262005.StarWars Episode IV A New Hope-Rv9.rmvb10:name.utf-851:05.26.2005.Star WasEpisode IV A New Hope-Rv9.rmvb12:piecelengthi262144e6:pieces36220:
+ * 
+ * 
+ */
+
 public class TorrentSeed implements Serializable {
 	static final Logger logger = LoggerFactory.getLogger(TorrentSeed.class);
 	
@@ -35,10 +42,10 @@ public class TorrentSeed implements Serializable {
 	public static final String METAINFO_INFO = "info";
 	public static final String METAINFO_INFO_PIECE_LENGTH = "piece length"; // 2^18 = 256K, BitTorrent 3.2 or older uses 1M.
 	public static final String METAINFO_INFO_PIECES = "pieces"; // one piece, one SHA1 hash(20 bytes).
-	public static final String METAINFO_INFO_PRIVATE = "private"; // clients get peers only from tracker
+	public static final String METAINFO_INFO_PRIVATE = "private"; // clients get peers only from the tracker
 
 	public static final String METAINFO_INFO_NAME = "name"; // file name or directory name
-	public static final String METAINFO_INFO_LENGTH = "length"; // length of the file if only one file to be downloaded.
+	public static final String METAINFO_INFO_LENGTH = "length"; // length of the file to be downloaded if it is single file.
 	public static final String METAINFO_INFO_MD5SUM = "md5sum"; // 
 
 	public static final String METAINFO_INFO_FILES = "files"; //

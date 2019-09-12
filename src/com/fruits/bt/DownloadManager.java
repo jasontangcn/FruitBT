@@ -32,8 +32,8 @@ public class DownloadManager {
 	// private TrackerManager trackerManager = new TrackerManager();
 	// private PeerConnectionManager connectionManager;
 	// 1. Start to download one file(hash_info, bitfield).
-	// 2. Get peers from tracker.
-	// 3. Connect to peers and download slices.
+	// 2. Get peers from the tracker.
+	// 3. Connect to peers and start to download slices.
 
 	// 1. Start listener.
 	// 2. Accept connect from peers.
@@ -68,24 +68,24 @@ public class DownloadManager {
 	
 	private void loadDownloadTasks() throws IOException { // If it fails, fail the system.
 		// FileOutputStream: If the specified file does not exits, create a new one.
-		// FileInputStream: If the specified file does not exits, throws exception.
+		// FileInputStream: If the specified file does not exits, throws an exception.
 		File taskFile = new File(Client.DOWNLOAD_TASKS_FILE);
 		// TODO: File.length() to check whether the file is empty or not, is it enough?
 		if (taskFile.length() > 0) {
-			// Load metadata for the files downloading/downloaded yet.
+			// Load metadata for the files that are in the progress of downloading/ or have been downloaded yet.
 			ObjectInputStream ois = null;
 			Object obj = null;
 			try {
 				ois = new ObjectInputStream(new FileInputStream(taskFile));
 				obj = ois.readObject();
-			} catch (ClassNotFoundException e) {
-				throw new IOException(e);
+			} catch (ClassNotFoundException cnfe) {
+				throw new IOException(cnfe);
 			} finally {
 				try {
 					if (ois != null)
 						ois.close();
-				} catch (IOException e) {
-					logger.error("", e);
+				} catch (IOException ioe) {
+					logger.error("", ioe);
 				}
 			}
 			this.downloadTasks = (Map<String, DownloadTask>) obj;

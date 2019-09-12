@@ -13,10 +13,10 @@ public class Client {
 	public static String DOWNLOAD_DIR; // "D:\\TorrentDownload";
 	public static String DOWNLOAD_TASKS_FILE; // "D:\\TorrentDownload\\downloadTasks.tmp"
 
-	public static byte[] PEER_ID;
 	public static String LISTENER_DOMAIN; // "127.0.0.1"
 	public static int LISTENER_PORT; // 8888
 
+	public static byte[] PEER_ID;
 	//public static byte[] REMOTE_PEER_ID;
 	//public static String REMOTE_DOMAIN; // "127.0.0.1"
 	//public static int REMOTE_PORT; // 6666
@@ -46,30 +46,30 @@ public class Client {
 	}
 
 	public static void main(String[] args) throws IOException {
-		Client system = new Client();
-		system.start();
+		Client client = new Client();
+		client.start();
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				logger.error("Shutting down the system.");
+				logger.error("Shutting down the client.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
-				system.stop();
-				logger.error("Shutting down the system spent {} ms.", (System.currentTimeMillis() - begin));
+				client.stop();
+				logger.error("Shutting down the client spent {} ms.", (System.currentTimeMillis() - begin));
 			}
 		});
 	}
 
 	public void start() throws IOException {
-		// 1. Load metadata for the files downloading/downloaded.
+		// 1. Load the metadata for the files that are in the progress of downloading or have been downloaded.
 		// 2. Start listener for other peers.
 		// 3. Start to download the files.
 		//    (1) Get peers from tracker.
 		//    (2) Connect to peers and get bitfield.
-		//    (3) Download pieces(slices) from peers based on strategies.
-		//        Random, Rarest First, Sequential
+		//    (3) Download pieces(slices) from peers based on specific strategies.
+		//        (Random, Rarest First or Sequential)
 		//    (4) keep_alive, choke, unchoke, interested, not_interested
 		//        bitfield, request, piece, have, cancel, port
-		//        Most import messages: bitfield, request, piece, have
+		//        Most important messages: bitfield, request, piece, have
 		// TODO: It is better to bind the socket with a IP instead of a domain.
 
 		File taskFile = new File(Client.DOWNLOAD_TASKS_FILE);
@@ -88,7 +88,7 @@ public class Client {
 		this.connectionManager = new PeerConnectionManager(new InetSocketAddress(Client.LISTENER_DOMAIN, Client.LISTENER_PORT), downloadManager,
 				new Thread.UncaughtExceptionHandler() {
 					public void uncaughtException(Thread t, Throwable e) {
-						logger.error("Connection manager failed, it is failing the system.", e);
+						logger.error("Connection manager failed, it is failing the client.", e);
 						System.exit(0);
 					}
 				});

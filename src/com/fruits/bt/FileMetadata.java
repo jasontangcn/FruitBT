@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fruits.bt.TorrentSeed.FileInfo;
 
-// TODO: Some days ago, if I open/write RandomAccessFile frequently, always got a exception.
+// TODO: Some days ago, if I open/write RandomAccessFile frequently, always got an exception.
 //       Now if I always open a file for write/read, the issue disappear.
 // Need to reproduce it.
 
