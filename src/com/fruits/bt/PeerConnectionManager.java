@@ -268,7 +268,7 @@ public class PeerConnectionManager implements Runnable {
 
 			// TODO: VERY IMPORTANT!
 			// selector.select() is blocking, and register() is blocking too.
-			register(socketChannel, SelectionKey.OP_CONNECT, conn);
+			registerChannel(socketChannel, SelectionKey.OP_CONNECT, conn);
 
 			return conn;
 		} catch (IOException e) {
@@ -334,12 +334,12 @@ public class PeerConnectionManager implements Runnable {
 		}
 	}
 
-	public SelectionKey register(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
+	public SelectionKey registerChannel(SelectableChannel socketChannel, int ops, Object attachment) throws IOException {
 		try {
 			selectorLock.lock();
 			//logger.trace("Wakening the selector.");
 			selector.wakeup();
-			//TODO: most time, this debut is not useful.
+			//TODO: this debug is useless.
 			//logger.trace("Registering channel : {}, ops = {}, attachment = {}.", socketChannel, interestOps(ops), attachment);
 			return socketChannel.register(selector, ops, attachment); // lots of exception may be thrown.
 		} finally {
@@ -348,7 +348,7 @@ public class PeerConnectionManager implements Runnable {
 		}
 	}
 
-	private String interestOps(int ops) {
+	private String interestOpsString(int ops) {
 		if (ops == SelectionKey.OP_ACCEPT) {
 			return "OP_ACCEPT";
 		}else if (ops == SelectionKey.OP_CONNECT) {
@@ -363,7 +363,7 @@ public class PeerConnectionManager implements Runnable {
 		return "Unexpected : " + ops;
 	}
 
-	public void unregister(SocketChannel socketChannel) {
+	public void unregisterChannel(SocketChannel socketChannel) {
 		if (socketChannel.isRegistered()) // it may be registered in multiple selectors.
 			socketChannel.keyFor(this.selector).cancel();
 		selector.wakeup();

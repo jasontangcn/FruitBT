@@ -405,7 +405,7 @@ public class TorrentSeed implements Serializable {
 
 		private transient FileChannel fileChannel;
 		private long startPos; // inclusive
-		private long endPos; // inclusive, if file length = 0, endPos = -1 aways.
+		private long endPos; // inclusive, if file length = 0, endPos = -1 always.
 
 		// TODO:
 		// Need Multi thread consideration.

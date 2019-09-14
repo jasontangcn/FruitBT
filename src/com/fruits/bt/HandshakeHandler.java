@@ -16,6 +16,8 @@ public class HandshakeHandler {
 	private ByteBuffer readBuffer = ByteBuffer.allocate(HandshakeMessage.HANDSHAKE_MESSAGE_LENGTH);
 	private ByteBuffer messageBytesToSend;
 
+	private boolean sendingInProgress = false;
+	
 	public HandshakeHandler(PeerConnection connection) {
 		this.connection = connection;
 	}
@@ -42,7 +44,7 @@ public class HandshakeHandler {
 	}
 
 	// @return Message has been totally written to peer or not?
-	public boolean writeMessage() {
+	public void writeMessage() {
 		SocketChannel socketChannel = this.connection.getChannel();
 		// TODO: if 0 bytes written, it leads to recreate the message.
 		do {
@@ -52,25 +54,24 @@ public class HandshakeHandler {
 			} catch (IOException e) {
 				logger.error("", e);
 				this.connection.selfClose();
-				return false;
 			}
 			if (n == 0)
 				break;
 		} while (messageBytesToSend.hasRemaining());
 
-		if (messageBytesToSend.hasRemaining()) {
-			return false;
-		} else {
-			messageBytesToSend = null;
-			return true;
+		if (!messageBytesToSend.hasRemaining()) {
+			this.messageBytesToSend = null;
+			this.sendingInProgress = false;
 		}
 	}
 
 	public void setMessageToSend(HandshakeMessage message) {
 		this.messageBytesToSend = HandshakeMessage.encode(message);
+		this.sendingInProgress = true;
 	}
 
 	public boolean isSendingInProgress() {
-		return (messageBytesToSend != null) && messageBytesToSend.hasRemaining();
+		//return (messageBytesToSend != null) && messageBytesToSend.hasRemaining();
+		return this.sendingInProgress;
 	}
 }

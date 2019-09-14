@@ -91,7 +91,7 @@ public class DownloadManager {
 			this.downloadTasks = (Map<String, DownloadTask>) obj;
 			logger.info("Loaded tasks from disk : {}.", this.downloadTasks);
 		} else {
-			this.downloadTasks = new HashMap<String, DownloadTask>();
+			this.downloadTasks = new HashMap<String, DownloadTask>(); // infoHash -> DownloadTask
 			ObjectOutputStream oos = null;
 			try {
 				oos = new ObjectOutputStream(new FileOutputStream(taskFile));

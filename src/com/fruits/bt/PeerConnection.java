@@ -134,7 +134,7 @@ public class PeerConnection {
 			logger.debug("Status : {}, reading handshake message.", this.state);
 			HandshakeMessage message = handshakeHandler.readMessage();
 			if (message == null)
-				return;
+				return; // if reading handshake message is not finished, go on reading.
 			this.peer.setPeerId(message.getPeerId());
 			this.peer.setInfoHash(message.getInfoHash());
 			this.state = State.OUT_HANDSHAKE_MESSAGE_RECEIVED;
@@ -155,7 +155,7 @@ public class PeerConnection {
 				this.peer.setBitfield(peerBitfield);
 
 				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHashString());
-				peerBitfield.setLength(selfBitfield.length());
+				peerBitfield.setLength(selfBitfield.length()); // TODO: XXX
 
 				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
 
@@ -297,7 +297,7 @@ public class PeerConnection {
 				logger.trace("Status : {}, only partial handshake message was written to peer.", this.state);
 				//OP_READ is unregistered.
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -306,7 +306,7 @@ public class PeerConnection {
 			} else {
 				this.state = State.IN_HANDSHAKE_MESSAGE_SENT;
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -328,7 +328,7 @@ public class PeerConnection {
 				logger.debug("Status : {}, only part of the bitfield message was written to peer.", this.state);
 				// OP_READ is unregistered.
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -350,7 +350,7 @@ public class PeerConnection {
 					this.addMessageToSend(interestedMessage);
 				}
 				// Send the messages that are put in queue during handshaking and bitfield exchanging.
-				startSendMessages();
+				//startSendMessages();
 			}
 		}else if (this.state == State.OUT_CONNECTED) {
 			//TODO: Use a while to ensure the message is totally written to peer.
@@ -366,16 +366,16 @@ public class PeerConnection {
 				// OP_READ is unregistered.
 				logger.debug("Status : {}, only part of the handshake message was written to peer.", this.state);
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					logger.error("", e);
-					this.selfClose();
+					this.selfClose(); // TODO: check all of the selfClose carefully to make sure it works as expected.
 					return;
 				}
 			} else {
 				this.state = State.OUT_HANDSHAKE_MESSAGE_SENT;
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_READ, this);
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -383,7 +383,7 @@ public class PeerConnection {
 				}
 				logger.debug("Status : {}, completed writing handshake message to peer.", this.state);
 			}
-		}else if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) {
+		}else if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) { // start to send bitfield to peer.
 			if (!messageHandler.isSendingInProgress()) {
 				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
 				logger.debug("Status : {}, writing bitfield message to peer [{}].", this.state, bitfield);
@@ -398,7 +398,7 @@ public class PeerConnection {
 				// OP_READ is unregistered.
 				logger.debug("Status : {}, only part of the bitfield message was written to peer.", this.state);
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_WRITE, this);
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -407,7 +407,7 @@ public class PeerConnection {
 			} else {
 				this.state = State.OUT_BITFIELD_SENT;
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this); // Overwrite the OP_WRITE. 
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_READ, this); // XXX: Overwrite the OP_WRITE. 
 				} catch (IOException e) {
 					logger.error("", e);
 					this.selfClose();
@@ -430,7 +430,7 @@ public class PeerConnection {
 				if (message == null) {
 					logger.trace("Status : {}, there is no message in queue, unregistered OP_WRITE for this channel.", this.state);
 					try {
-						this.connectionManager.register(this.socketChannel, SelectionKey.OP_READ, this);
+						this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_READ, this);
 						break;
 					} catch (IOException e) {
 						logger.error("", e);
@@ -447,7 +447,7 @@ public class PeerConnection {
 			if (messageHandler.isSendingInProgress()) {
 				logger.warn("Status : {}, only part of the message {} was written to peer.", this.state, messageHandler.getMessageToSend());
 				try {
-					this.connectionManager.register(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
+					this.connectionManager.registerChannel(this.socketChannel, SelectionKey.OP_WRITE | SelectionKey.OP_READ, this);
 					break;
 				} catch (IOException e) {
 					logger.error("", e);
@@ -521,7 +521,7 @@ public class PeerConnection {
 		// 3. Cancel the indexes requesting in DownloadManager.
 		// 4. Remove this connection from the peerConnections in PeerConnecionManager.
 		logger.warn("Closing connection : {}.", this);
-		this.connectionManager.unregister(this.socketChannel);
+		this.connectionManager.unregisterChannel(this.socketChannel);
 
 		Helper.closeChannel(socketChannel);
 		if (isHandshakeCompleted()) {

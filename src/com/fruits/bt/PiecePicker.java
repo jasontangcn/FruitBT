@@ -43,6 +43,8 @@ public class PiecePicker {
 	private Random random = new Random();
 	private List<PeerConnection> connections = new ArrayList<PeerConnection>();
 	private Map<String, Map<Integer, Integer>> rarestFirsts = new HashMap<String, Map<Integer, Integer>>();
+	// infoHash -> BacthRequests
+	// BatchRequest -> piece index + connection id
 	private Map<String, List<BatchRequest>> batchRequests = new HashMap<String, List<BatchRequest>>();
 
 	public PiecePicker(DownloadManager downloadManager) {
@@ -94,7 +96,7 @@ public class PiecePicker {
 			this.rarestFirsts.put(infoHash, rarestFirst);
 		}
 		for (int i = 0; i < peerBitfield.length(); i++) {
-			if (peerBitfield.get(i)) {
+			if (peerBitfield.get(i)) { // setup RarestFirst per the bitfield.
 				Integer n = rarestFirst.get(Integer.valueOf(i));
 				if (n == null) {
 					rarestFirst.put(Integer.valueOf(i), Integer.valueOf(1));
@@ -188,6 +190,7 @@ public class PiecePicker {
 		BatchRequest request = getBatchRequestInProgress(infoHash, connectionId);
 
 		// I have not requested any piece, create a new batch request.
+		// If I have downloaded some slices of a piece, download the remaining slices from the same peer.
 		if (request == null) {
 			Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
 			Bitmap peerBitfield = connection.getPeer().getBitfield();

@@ -328,7 +328,7 @@ public class FileMetadata implements Serializable {
 					logger.error("", ae);
 				}
 			}else {
-				logger.error("[Hash valication] partial data of piece[index: {}] can not read, remaining = {}", index, pieceData.remaining());
+				logger.error("[Hash validation] partial data of piece[index: {}] can not read, remaining = {}", index, pieceData.remaining());
 			}
 			
 			piecesCompleted++;
