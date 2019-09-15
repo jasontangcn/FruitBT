@@ -61,10 +61,6 @@ public class DownloadManager {
 		*/
 		this.syncDownloadTasksToDisk();
 	}
-
-	public void setConnectionManager(PeerConnectionManager connectionManager) {
-		this.connectionManager = connectionManager;
-	}
 	
 	private void loadDownloadTasks() throws IOException { // If it fails, fail the system.
 		// FileOutputStream: If the specified file does not exits, create a new one.
@@ -78,8 +74,8 @@ public class DownloadManager {
 			try {
 				ois = new ObjectInputStream(new FileInputStream(taskFile));
 				obj = ois.readObject();
-			} catch (ClassNotFoundException cnfe) {
-				throw new IOException(cnfe);
+			} catch (ClassNotFoundException e) {
+				throw new IOException(e);
 			} finally {
 				try {
 					if (ois != null)
@@ -108,16 +104,6 @@ public class DownloadManager {
 		}
 	}
 
-	public PiecePicker getPiecePicker() {
-		return this.piecePicker;
-	}
-
-	public void finalize() {
-		for (DownloadTask task : this.downloadTasks.values()) {
-			task.getFileMetadata().finalize();
-		}
-	}
-
 	// IOException may be caused by : failed to parse seed file or failed to create FileMetadata.
 	// But this should not fail the system, just ignore the new seed.
 	public void addDownloadTask(String seedFilePath) throws IOException {
@@ -136,15 +122,32 @@ public class DownloadManager {
 		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 	}
 
-	public void seeding(String seedFilePath) throws IOException {
-		TorrentSeed seed = TorrentSeed.parseSeedFile(seedFilePath);
-		peerFinder.getPeers(seed);
+
+	public void close() {
+	//public void finalize() {
+		for (DownloadTask task : this.downloadTasks.values()) {
+			task.getFileMetadata().close();
+		}
 	}
 	
 	public DownloadTask getDownloadTask(String infoHash) {
 		return this.downloadTasks.get(infoHash);
 	}
-
+	
+	public FileMetadata getFileMetadata(String infoHash) {
+		DownloadTask task = this.downloadTasks.get(infoHash);
+		if(task != null)
+			return task.getFileMetadata();
+		return null;
+	}
+	
+	public void setDownloadTaskState(String infoHash, DownloadState state) throws IOException {
+		DownloadTask task = this.downloadTasks.get(infoHash);
+		if(task != null)
+			task.setState(state);
+		syncDownloadTasksToDisk();
+	}
+	
 	public void startDownloadTask(String infoHash) throws IOException { // IOException from syncDownloadTaksToDisk.
 		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
 		downloadTask.setState(DownloadTask.DownloadState.STARTED);
@@ -172,8 +175,7 @@ public class DownloadManager {
 		peerConnection.addMessageToSend(new RequestMessage(slice.getIndex(), slice.getBegin(), slice.getLength()));
 		*/
 	}
-
-	//
+	
 	public void stopDownloadTask(String infoHash) {
 		// 0. Add a DownloadTask in DownloadManager.
 		// 1. Open a temp file.
@@ -184,8 +186,8 @@ public class DownloadManager {
 		// 1. Close the connections.
 		// 2. Remove the requesting index from PiecePicker.
 		// 3. Close task file and temp file.
-		this.connectionManager.closePeerConnections(infoHash);
-		this.downloadTasks.get(infoHash).getFileMetadata().finalize();
+		this.connectionManager.closePeerConnections(infoHash); 	//TODO: should not close the incoming connections.
+		this.downloadTasks.get(infoHash).getFileMetadata().close();
 		try {
 			DownloadTask task = this.downloadTasks.get(infoHash);
 			task.setState(DownloadState.STOPPED);
@@ -201,6 +203,7 @@ public class DownloadManager {
 	public void removeDownloadTask(String infoHash, boolean deleteFiles) throws IOException {
 		this.downloadTasks.remove(infoHash);
 		this.syncDownloadTasksToDisk();
+		
 		if (deleteFiles) {
 			this.downloadTasks.get(infoHash).getFileMetadata().delete();
 		}
@@ -220,7 +223,7 @@ public class DownloadManager {
 	}
 
 	// Any file download task is updated, this method should be called to sync the changing to disk.
-	private void syncDownloadTasksToDisk() throws IOException { // Fatal error, if sych failed, the metadata is not complete, system should shutdown.
+	void syncDownloadTasksToDisk() throws IOException { // Fatal error, if sych failed, the metadata is not complete, system should shutdown.
 		// TODO: Lock the file? Optimize the logic?
 		// FileOutputStream : if the file does not exist, create a new one.
 
@@ -230,61 +233,21 @@ public class DownloadManager {
 		oos.close();
 		//logger.trace("downloadTasks : " + this.downloadTasks + ".");
 	}
-
-	public Bitmap getBitfield(String infoHash) {
-		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
-		if (downloadTask != null)
-			return downloadTask.getFileMetadata().getBitfield();
-		return null;
+	
+	public void seeding(String seedFilePath) throws IOException {
+		TorrentSeed seed = TorrentSeed.parseSeedFile(seedFilePath);
+		peerFinder.getPeers(seed);
 	}
 
-	public float getPercentCompleted(String infoHash) {
-		DownloadTask downloadTask = this.downloadTasks.get(infoHash);
-		if (downloadTask != null)
-			return downloadTask.getFileMetadata().getPercentCompleted();
-		return -1;
+	public void setConnectionManager(PeerConnectionManager connectionManager) {
+		this.connectionManager = connectionManager;
 	}
-
-	public ByteBuffer readSlice(String infoHash, Slice slice) {
-		try {
-			DownloadTask task = this.downloadTasks.get(infoHash);
-			if (task != null)
-				return task.getFileMetadata().readSlice(slice);
-			return null;
-		} catch (IOException e) {
-			// TODO:
-			// If exception caught, failed to open temp file, it's fatal error.
-			logger.error("", e);
-			this.stopDownloadTask(infoHash);
-			return null;
-		}
+	
+	public PeerConnectionManager getConnectionManager() {
+		return this.connectionManager;
 	}
-
-	// TODO: Register listeners to FileMetadata for events, e.g. slice write, piece completed, whole file completed?
-	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
-		try {
-			DownloadTask task = this.downloadTasks.get(infoHash);
-			FileMetadata metadata = task.getFileMetadata();
-			boolean isPieceCompleted = metadata.writeSlice(index, begin, length, data);
-
-			// The file has been completed. Let somebody know?
-			if (metadata.isAllPiecesCompleted()) {
-				// TODO: XXXX
-				task.setState(DownloadState.COMPLETED);
-			}
-
-			syncDownloadTasksToDisk();
-
-			// TODO: Notify all of peers that are interested in me.
-			if (isPieceCompleted)
-				this.connectionManager.notifyPeersIHavePiece(infoHash, index);
-
-		} catch (IOException e) {
-			// TODO:
-			// Failed to open temp file or failed to sych tasks to disk.
-			// In any case, we should stop this task(do not need to fail the whole system).
-			logger.error("", e);
-			this.stopDownloadTask(infoHash);
-		}
+	
+	public PiecePicker getPiecePicker() {
+		return this.piecePicker;
 	}
 }

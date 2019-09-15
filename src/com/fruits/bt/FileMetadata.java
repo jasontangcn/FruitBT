@@ -142,7 +142,8 @@ public class FileMetadata implements Serializable {
 
 	// TODO: Who and when to call it?
 	// Added a hook for VM?
-	public void finalize() {
+	//public void finalize() {
+	public void close() {
 		for (FileInfo fileInfo : this.fileInfos)
 			fileInfo.close();
 	}
@@ -198,7 +199,7 @@ public class FileMetadata implements Serializable {
 				ByteBuffer buffer = ByteBuffer.allocate(size);
 				FileChannel fileChannel = info.getFileChannel();
 				try {
-					fileChannel.position(pos); // Horrible bug! Did not set position.
+					fileChannel.position(pos); // Big bug! Did not set position.
 					fileChannel.read(buffer);
 					buffer.flip();
 					data.put(buffer);
@@ -400,6 +401,7 @@ public class FileMetadata implements Serializable {
 	}
 	*/
 
+	// TODO: XXX
 	public boolean isAllPiecesCompleted() {
 		return (this.piecesCompleted == this.pieces.size());
 	}

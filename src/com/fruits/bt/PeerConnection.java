@@ -47,7 +47,7 @@ public class PeerConnection {
 	private final boolean isOutgoingConnection;
 	private final SocketChannel socketChannel;
 	private final PeerConnectionManager connectionManager;
-	private final DownloadManager downloadManager;
+	private final PiecePicker piecePicker;
 	private final HandshakeHandler handshakeHandler;
 	private final PeerMessageHandler messageHandler;
 
@@ -55,10 +55,10 @@ public class PeerConnection {
 	private Peer peer;
 
 	// Initial status.
-	private volatile boolean choking = true; // choking peer
-	private volatile boolean interesting = false; // interested in peer
-	private volatile boolean choked = true; // choked by peer
-	private volatile boolean interested = false; // peer interested in me
+	private volatile boolean choking = true; // choking peer, Choker will choke/unchoke peers per specific algorithm.
+	private volatile boolean interesting = false; // interested in peer, initialized in the handshake phase
+	private volatile boolean choked = true; // choked by peer, peer send ChokeMessage or UnchokeMessage to me.
+	private volatile boolean interested = false; // peer interested in me, peer send InterestedMessage or NotInterestedMessage to me. 
 
 	private ArrayBlockingQueue<PeerMessage> messagesToSend = new ArrayBlockingQueue<PeerMessage>(1024, true);
 
@@ -68,11 +68,11 @@ public class PeerConnection {
 	// TODO: XXXX
 	// Batch send/receive may not work well because of unexpected communication.
 
-	public PeerConnection(boolean isOutgoingConnection, SocketChannel socketChannel, PeerConnectionManager connectionManager, DownloadManager downloadManager) {
+	public PeerConnection(boolean isOutgoingConnection, SocketChannel socketChannel, PeerConnectionManager connectionManager, PiecePicker piecePicker) {
 		this.isOutgoingConnection = isOutgoingConnection;
 		this.socketChannel = socketChannel;
 		this.connectionManager = connectionManager;
-		this.downloadManager = downloadManager;
+		this.piecePicker = piecePicker;
 		this.handshakeHandler = new HandshakeHandler(this);
 		this.messageHandler = new PeerMessageHandler(this);
 	}
@@ -111,7 +111,7 @@ public class PeerConnection {
 
 				this.peer.setBitfield(peerBitfield);
 
-				Bitmap selfBitfield = this.downloadManager.getBitfield(this.self.getInfoHashString());
+				Bitmap selfBitfield = this.piecePicker.getBitfield(this.self.getInfoHashString());
 				// TODO: need to validate it before assigning the length?
 				peerBitfield.setLength(selfBitfield.length());
 
@@ -154,7 +154,7 @@ public class PeerConnection {
 				Bitmap peerBitfield = ((BitfieldMessage) message).getBitfield();
 				this.peer.setBitfield(peerBitfield);
 
-				Bitmap selfBitfield = this.downloadManager.getBitfield(self.getInfoHashString());
+				Bitmap selfBitfield = this.piecePicker.getBitfield(self.getInfoHashString());
 				peerBitfield.setLength(selfBitfield.length()); // TODO: XXX
 
 				this.interesting = Helper.isInterested(selfBitfield, peerBitfield);
@@ -189,6 +189,8 @@ public class PeerConnection {
 			logger.debug("PeerConnection->readMessage: Got a message [{}] from peer {}.", message, this.peer.getAddress());
 
 			if (message instanceof KeepAliveMessage) {
+				// TODO: XXX
+				
 			} else if (message instanceof ChokeMessage) {
 				this.choked = true;
 				// TODO: Lot of things to do.
@@ -199,17 +201,20 @@ public class PeerConnection {
 						it.remove();
 					}
 				}
-				this.downloadManager.getPiecePicker().removeConnection(this);
+				this.piecePicker.removeChokedConnection(this);
+				
 			} else if (message instanceof UnchokeMessage) {
 				this.choked = false;
-				this.downloadManager.getPiecePicker().addConnection(this);
+				this.piecePicker.addUnchokedConnection(this);
 				logger.debug("PeerConnection->readMessage: Got a UnchokeMessage and this.interesting is : {}.", this.interesting);
 				if (this.interesting) {
-					this.downloadManager.getPiecePicker().requestMoreSlices(this);
+					this.piecePicker.requestMoreSlices(this);
 				}
+				
 			} else if (message instanceof InterestedMessage) {
 				this.interested = true;
 				// TODO: If a peer is interested in me, I will unchoke him?
+				
 			} else if (message instanceof NotInterestedMessage) {
 				this.interested = false;
 				// TODO: Cancel the piece messages for the peer, any more to do?
@@ -220,13 +225,14 @@ public class PeerConnection {
 						iterator.remove();
 					}
 				}
+				
 			} else if (message instanceof HaveMessage) {
 				HaveMessage haveMessage = (HaveMessage) message;
 				this.peer.getBitfield().set(haveMessage.getPieceIndex());
 
 				boolean interestedNow = false;
 				if (!this.interesting) {
-					boolean interested = Helper.isInterested(this.downloadManager.getBitfield(self.getInfoHashString()), this.peer.getBitfield());
+					boolean interested = Helper.isInterested(this.piecePicker.getBitfield(self.getInfoHashString()), this.peer.getBitfield());
 					this.interesting = interested;
 					if (interested) {
 						interestedNow = true;
@@ -235,23 +241,25 @@ public class PeerConnection {
 					}
 				}
 
-				this.downloadManager.getPiecePicker().peerHaveNewPiece(self.getInfoHashString(), haveMessage.getPieceIndex());
+				this.piecePicker.peerHaveNewPiece(self.getInfoHashString(), haveMessage.getPieceIndex());
 				// TODO: XXXX
 				if (!this.choked && interestedNow) {
 					// TODO: isBatchRequestInProgress?
-					if (!this.downloadManager.getPiecePicker().isBatchRequestInProgress(self.getInfoHashString(), connectionId))
-						this.downloadManager.getPiecePicker().requestMoreSlices(this);
+					if (!this.piecePicker.isBatchRequestInProgress(self.getInfoHashString(), connectionId))
+						this.piecePicker.requestMoreSlices(this);
 				}
+				
 			} else if (message instanceof BitfieldMessage) {
 				// In this status, client should not send/receive bitfield message.
 				logger.warn("Status : {}, in this status client should not receive bitfield message.", this.state);
+				
 			} else if (message instanceof RequestMessage) {
 				logger.trace("PeerConnection->readMessage: Got a RequestMessage {}.", message);
 
 				RequestMessage request = (RequestMessage) message;
 				Slice slice = new Slice(request.getIndex(), request.getBegin(), request.getLength());
 				// TODO: data may null if failed to read slice.
-				ByteBuffer data = this.downloadManager.readSlice(self.getInfoHashString(), slice);
+				ByteBuffer data = this.piecePicker.readSlice(self.getInfoHashString(), slice);
 				if (data != null) {
 					PieceMessage pieceMessage = new PieceMessage(slice.getIndex(), slice.getBegin(), data);
 					addMessageToSend(pieceMessage);
@@ -260,8 +268,8 @@ public class PeerConnection {
 				PieceMessage piece = (PieceMessage) message;
 				// TODO: Silent but the writing may fail.
 				logger.trace("PeerConnection->readMessage: Got a PieceMessage {}.", message);
-				this.downloadManager.writeSlice(self.getInfoHashString(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
-				this.downloadManager.getPiecePicker().sliceReceived(this);
+				
+				this.piecePicker.sliceReceived(this, piece);
 
 			} else if (message instanceof CancelMessage) {
 				CancelMessage cancelMessage = (CancelMessage) message;
@@ -316,7 +324,7 @@ public class PeerConnection {
 			}
 		}else if (this.state == State.IN_BITFIELD_RECEIVED) {
 			if (!messageHandler.isSendingInProgress()) {
-				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
+				Bitmap bitfield = this.piecePicker.getBitfield(self.getInfoHashString());
 				logger.debug("Status : {}, writing bitfield message to peer [{}].", this.state, bitfield);
 				BitfieldMessage bitfieldMessage = new BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -385,7 +393,7 @@ public class PeerConnection {
 			}
 		}else if (this.state == State.OUT_HANDSHAKE_MESSAGE_RECEIVED) { // start to send bitfield to peer.
 			if (!messageHandler.isSendingInProgress()) {
-				Bitmap bitfield = this.downloadManager.getBitfield(self.getInfoHashString());
+				Bitmap bitfield = this.piecePicker.getBitfield(self.getInfoHashString());
 				logger.debug("Status : {}, writing bitfield message to peer [{}].", this.state, bitfield);
 				BitfieldMessage bitfieldMessage = new BitfieldMessage(bitfield);
 				messageHandler.setMessageToSend(bitfieldMessage);
@@ -493,21 +501,24 @@ public class PeerConnection {
 		if (isHandshakeCompleted()) {
 			long now = System.currentTimeMillis();
 			
-			if (now - this.timeLastRead > 3 * 60 * 1000) {
+			if (now - this.timeLastRead > 3 * 60 * 1000) { // there is no read in the last 3 minutes, close this connection.
 				this.selfClose();
 				return;
 			}
 			
-			if (now - this.timeLastWrite > 45 * 1000) {
+			if (now - this.timeLastWrite > 45 * 1000) { // there is no write in the last 45 seconds, send a KeepAliveMessage to peer.
 				this.addMessageToSend(new KeepAliveMessage());
 			}
 		}
 	}
-
+	
+	// selfClose/close difference
+	// refer to PeerConnectionManager.removePeerConnection
+	// TODO: Is there a better design?
 	public void selfClose() {
 		this.close();
-
-		if (this.state == State.IN_EXCHANGE_BITFIELD_COMPLETED || this.state == State.OUT_EXCHANGE_BITFIELD_COMPLETED) {
+		
+		if (isHandshakeCompleted()) {
 			this.connectionManager.removePeerConnection(this.self.getInfoHashString(), this.connectionId);
 		}
 	}
@@ -524,9 +535,9 @@ public class PeerConnection {
 		this.connectionManager.unregisterChannel(this.socketChannel);
 
 		Helper.closeChannel(socketChannel);
-		if (isHandshakeCompleted()) {
-		  this.downloadManager.getPiecePicker().removeConnection(this);
-		}
+	  if(this.isChoked()) {
+	  	this.piecePicker.removeChokedConnection(this);
+	  }
 	}
 
 	public boolean isHandshakeCompleted() {

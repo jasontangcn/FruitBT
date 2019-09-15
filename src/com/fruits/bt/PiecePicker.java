@@ -1,5 +1,7 @@
 package com.fruits.bt;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -13,6 +15,8 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fruits.bt.DownloadTask.DownloadState;
+import com.fruits.bt.PeerMessage.PieceMessage;
 import com.fruits.bt.PeerMessage.RequestMessage;
 
 public class PiecePicker {
@@ -42,6 +46,7 @@ public class PiecePicker {
 	 */
 	private Random random = new Random();
 	private List<PeerConnection> connections = new ArrayList<PeerConnection>();
+	//
 	private Map<String, Map<Integer, Integer>> rarestFirsts = new HashMap<String, Map<Integer, Integer>>();
 	// infoHash -> BacthRequests
 	// BatchRequest -> piece index + connection id
@@ -51,8 +56,10 @@ public class PiecePicker {
 		this.downloadManager = downloadManager;
 	}
 
-	public void sliceReceived(PeerConnection connection) {
+	public void sliceReceived(PeerConnection connection, PieceMessage piece) {
 		logger.trace("PiecePicker: sliceReceived is called.");
+		writeSlice(connection.getSelf().getInfoHashString(), piece.getIndex(), piece.getBegin(), piece.getBlock().remaining(), piece.getBlock());
+		
 		BatchRequest request = getBatchRequestInProgress(connection.getSelf().getInfoHashString(), connection.getConnectionId());
 		request.setReceived(request.getReceived() + 1);
 
@@ -78,7 +85,7 @@ public class PiecePicker {
 	}
 
 	// Add connection that is unchoked.
-	public void addConnection(PeerConnection connection) {
+	public void addUnchokedConnection(PeerConnection connection) {
 		logger.info("PiecePicker: add a new connection : {}.", connection.getConnectionId());
 		this.connections.add(connection);
 
@@ -97,18 +104,18 @@ public class PiecePicker {
 		}
 		for (int i = 0; i < peerBitfield.length(); i++) {
 			if (peerBitfield.get(i)) { // setup RarestFirst per the bitfield.
-				Integer n = rarestFirst.get(Integer.valueOf(i));
+				Integer n = rarestFirst.get(i);
 				if (n == null) {
-					rarestFirst.put(Integer.valueOf(i), Integer.valueOf(1));
+					rarestFirst.put(i, 1);
 				} else {
-					rarestFirst.put(Integer.valueOf(i), Integer.valueOf(n.intValue() + 1));
+					rarestFirst.put(i, n + 1);
 				}
 			}
 		}
 	}
 
 	// Remove connection that is choked or closed.
-	public void removeConnection(PeerConnection connection) {
+	public void removeChokedConnection(PeerConnection connection) {
 		logger.info("PiecePicker: removing a new connection : {}.", connection.getConnectionId());
 		// TODO: Override the equals of PeerConnection then use API List.remove to remove the connection.
 		Iterator<PeerConnection> iterator = this.connections.iterator();
@@ -131,7 +138,7 @@ public class PiecePicker {
 			if (peerBitfield.get(i)) {
 				// If the map previously contained a mapping for the key, the old value is replaced by the specified value. 
 				// (A map m is said to contain a mapping for a key k if and only if m.containsKey(k) would return true.)
-				rarestFirst.put(Integer.valueOf(i), Integer.valueOf(rarestFirst.get(Integer.valueOf(i)).intValue() - 1));
+				rarestFirst.put(i, rarestFirst.get(i) - 1);
 			}
 		}
 
@@ -185,14 +192,14 @@ public class PiecePicker {
 			logger.debug("PiecePicke-> All pieces have been completed.");
 			return;
 		}
-		float percentCompleted = this.downloadManager.getPercentCompleted(infoHash);
+		float percentCompleted = this.getPercentCompleted(infoHash);
 		// Check whether I am requesting any piece.
 		BatchRequest request = getBatchRequestInProgress(infoHash, connectionId);
 
 		// I have not requested any piece, create a new batch request.
 		// If I have downloaded some slices of a piece, download the remaining slices from the same peer.
 		if (request == null) {
-			Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
+			Bitmap selfBitfield = this.getBitfield(infoHash);
 			Bitmap peerBitfield = connection.getPeer().getBitfield();
 
 			List<Integer> indexes = new ArrayList<Integer>();
@@ -290,6 +297,60 @@ public class PiecePicker {
 			this.removeBatchRequest(infoHash, connectionId);
 			logger.debug("Current index = {} is done, proceed to request next piece.", request.getIndex());
 			requestMoreSlices(connection);
+		}
+	}
+
+	public Bitmap getBitfield(String infoHash) {
+		FileMetadata metadata = this.downloadManager.getFileMetadata(infoHash);
+		if (metadata != null)
+			return metadata.getBitfield();
+		return null;
+	}
+
+	public float getPercentCompleted(String infoHash) {
+		FileMetadata metadata = this.downloadManager.getFileMetadata(infoHash);
+		if (metadata != null)
+			return metadata.getPercentCompleted();
+		return -1;
+	}
+
+	public ByteBuffer readSlice(String infoHash, Slice slice) {
+		try {
+			FileMetadata metadata = this.downloadManager.getFileMetadata(infoHash);
+			if (metadata != null)
+				return metadata.readSlice(slice);
+			return null;
+		} catch (IOException e) {
+			// TODO:
+			// If exception caught, failed to open temp file, it's fatal error.
+			logger.error("", e);
+			downloadManager.stopDownloadTask(infoHash);
+			return null;
+		}
+	}
+
+  //TODO: Register listeners to FileMetadata for events, e.g. slice write, piece completed, whole file completed?
+	public void writeSlice(String infoHash, int index, int begin, int length, ByteBuffer data) {
+		try {
+			FileMetadata metadata = this.downloadManager.getFileMetadata(infoHash);
+			boolean isPieceCompleted = metadata.writeSlice(index, begin, length, data);
+	
+			// The file has been completed. Let somebody know?
+			if (metadata.isAllPiecesCompleted()) {
+				// TODO: XXXX
+				this.downloadManager.setDownloadTaskState(infoHash, DownloadState.COMPLETED); // TODO: close the FileMetadata?
+			}
+	
+			// TODO: Notify all of peers that are interested in me.
+			if (isPieceCompleted)
+				downloadManager.getConnectionManager().notifyPeersIHavePiece(infoHash, index);
+	
+		} catch (IOException e) {
+			// TODO:
+			// Failed to open temp file or failed to sych tasks to disk.
+			// In any case, we should stop this task(do not need to fail the whole system).
+			logger.error("", e);
+			downloadManager.stopDownloadTask(infoHash);
 		}
 	}
 

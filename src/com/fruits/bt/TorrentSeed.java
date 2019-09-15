@@ -427,6 +427,8 @@ public class TorrentSeed implements Serializable {
 		}
 
 		public void delete() {
+			this.close(); // TODO: Is it required?
+			
 			File file = new File(this.path);
 			if (file.exists()) {
 				file.delete();

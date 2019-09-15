@@ -196,7 +196,7 @@ public class PeerConnectionManager implements Runnable {
 						try {
 							socketChannel.configureBlocking(false);
 							logger.info("[Selector] Accepted : {}.", socketChannel.socket().getRemoteSocketAddress());
-							PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager);
+							PeerConnection conn = new PeerConnection(false, socketChannel, this, downloadManager.getPiecePicker());
 							Peer self = new Peer();
 							// TODO: peerId managing.
 							self.setPeerId(Client.PEER_ID);
@@ -244,7 +244,7 @@ public class PeerConnectionManager implements Runnable {
 														// (1) ServerSocketChannel does not work.
 														// (2) Selector does not work.
 														// TODO: Shall I call it or the Client call it?
-			this.stop();
+			//this.shutdown();
 
 			throw new RuntimeException(e); // How to propagate this exception from child thread to parent thread?
 		}
@@ -260,7 +260,7 @@ public class PeerConnectionManager implements Runnable {
 			// TODO: Randomly bind to local address.
 			socketChannel.connect(peer.getAddress()); // connect-> lots of exception may be thrown.
 			logger.debug("Connecting to peer: {}.", peer.getAddress());
-			PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager);
+			PeerConnection conn = new PeerConnection(true, socketChannel, this, downloadManager.getPiecePicker());
 
 			self.setAddress((InetSocketAddress) socketChannel.socket().getLocalSocketAddress());
 			conn.setSelf(self);
@@ -278,7 +278,7 @@ public class PeerConnectionManager implements Runnable {
 		}
 	}
 
-	public void stop() {
+	public void shutdown() {
 		logger.warn("PeerConnectionManager is stopping.");
 
 		if (this.stopped)
@@ -295,6 +295,7 @@ public class PeerConnectionManager implements Runnable {
 
 	// For outgoing connection: the connection may not finish connection yet.
 	// For incoming connection: the connection at least has been accepted.
+	// IN_EXCHANGE_BITFIELD_COMPLETED || OUT_EXCHANGE_BITFIELD_COMPLETED -> addPeerConnection
 	public void addPeerConnection(String infoHash, PeerConnection connection) {
 		logger.debug("New connection is created, outgoing connection? [{}], [{}]->[{}].", connection.isOutgoingConnection(), connection.getSelf().getAddress(), connection.getPeer().getAddress());
 		logger.trace("New connection is created, outgoing connection? [{}], infoHash = {}, {}.", connection.isOutgoingConnection(), infoHash, connection);
@@ -370,7 +371,7 @@ public class PeerConnectionManager implements Runnable {
 	}
 
 	public void notifyPeersIHavePiece(String infoHash, int pieceIndex) {
-		Bitmap selfBitfield = this.downloadManager.getBitfield(infoHash);
+		Bitmap selfBitfield = this.downloadManager.getPiecePicker().getBitfield(infoHash);
 
 		List<PeerConnection> connections = this.peerConnections.get(infoHash);
 		for (PeerConnection conn : connections) {

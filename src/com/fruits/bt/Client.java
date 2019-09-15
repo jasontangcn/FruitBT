@@ -102,6 +102,6 @@ public class Client {
 
 	public void stop() {
 		this.downloadManager.stopAllDownloadTasks();
-		this.connectionManager.stop();
+		this.connectionManager.shutdown();
 	}
 }
