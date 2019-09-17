@@ -67,6 +67,7 @@ public class DownloadManager {
 		// FileInputStream: If the specified file does not exits, throws an exception.
 		File taskFile = new File(Client.DOWNLOAD_TASKS_FILE);
 		// TODO: File.length() to check whether the file is empty or not, is it enough?
+		// The length, in bytes, of the file denoted by this abstract pathname, or <code>0L</code> if the file does not exist.
 		if (taskFile.length() > 0) {
 			// Load metadata for the files that are in the progress of downloading/ or have been downloaded yet.
 			ObjectInputStream ois = null;
@@ -123,8 +124,7 @@ public class DownloadManager {
 	}
 
 
-	public void close() {
-	//public void finalize() {
+	public void finalize() {
 		for (DownloadTask task : this.downloadTasks.values()) {
 			task.getFileMetadata().close();
 		}
@@ -157,6 +157,7 @@ public class DownloadManager {
 		TorrentSeed seed = fileMetadata.getSeed();
 		Peer self = new Peer();
 		// TODO: Set the correct peerId, infoHash and bitfield.
+		// Always get self's bitfield when using it, but we need to store peer's bitfield in the instance.
 		self.setPeerId(Client.PEER_ID);
 		self.setInfoHashString(infoHash);
 		logger.info("Started download task: infoHash : {}, bitfield : {}.", infoHash, fileMetadata.getBitfield());
@@ -176,6 +177,13 @@ public class DownloadManager {
 		*/
 	}
 	
+	public void pauseDownloadTask(String infoHash) {
+	}
+	
+	public void restartDownloadTask(String infoHash) throws IOException {
+	}
+	
+	// this should be called when client exits.
 	public void stopDownloadTask(String infoHash) {
 		// 0. Add a DownloadTask in DownloadManager.
 		// 1. Open a temp file.
@@ -201,6 +209,8 @@ public class DownloadManager {
 	// If task is completed, shall we remove the corresponding download task?
 	// If you delete a running download task, system will sequentially call stopDownloadTask and removeDownloadTask.
 	public void removeDownloadTask(String infoHash, boolean deleteFiles) throws IOException {
+		this.stopDownloadTask(infoHash);
+		
 		this.downloadTasks.remove(infoHash);
 		this.syncDownloadTasksToDisk();
 		
@@ -209,10 +219,11 @@ public class DownloadManager {
 		}
 	}
 
-	public void pauseDownloadTask(String infoHash) {
-	}
-
-	public void startAllDownloadTasks() {
+	public void startAllDownloadTasks() throws IOException {
+		Iterator<String> iterator = this.downloadTasks.keySet().iterator();
+		while (iterator.hasNext()) {
+			startDownloadTask(iterator.next());
+		}
 	}
 
 	public void stopAllDownloadTasks() {
@@ -222,12 +233,15 @@ public class DownloadManager {
 		}
 	}
 
-	// Any file download task is updated, this method should be called to sync the changing to disk.
+	// Any file download task is updated, this method should be called to sync the changing.
 	void syncDownloadTasksToDisk() throws IOException { // Fatal error, if sych failed, the metadata is not complete, system should shutdown.
 		// TODO: Lock the file? Optimize the logic?
 		// FileOutputStream : if the file does not exist, create a new one.
 
-		// TODO: rewrite the code, we should not repeat opening then closing just for one slice writing, we should keep the file always open.
+		// TODO: rewrite the code, we should not repeat opening then closing just for one slice writing, 
+		// we should keep the file always open.
+		
+		// public FileOutputStream(String name, boolean append) -> append mode
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Client.DOWNLOAD_TASKS_FILE));
 		oos.writeObject(this.downloadTasks);
 		oos.close();
