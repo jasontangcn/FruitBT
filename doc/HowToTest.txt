@@ -9,3 +9,5 @@ Torrent seed should point to TrackerServer.
 Seed should have a different PeerId with downloading client.
 
 Seed should have a completed download tmp file and a complete file to be downloaded, also with a seed file.
+
+-Ddownload.tasks.file=D:\\FruitBT\\TorrentDownload3\\downloadTasks.tmp -Ddownload.dir=D:\\FruitBT\\TorrentDownload3 -Dlistener.domain=192.168.0.101 -Dlistener.port=8888
