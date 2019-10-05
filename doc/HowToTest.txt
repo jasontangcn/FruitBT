@@ -1,2 +1,11 @@
 1. How a FruitBT works?
-(1) 
+(1) Start BitCometTracker_0.5.
+(2) Start Seed in port 6666.
+(3) Start downloading client.
+
+
+Torrent seed should point to TrackerServer.
+
+Seed should have a different PeerId with downloading client.
+
+Seed should have a completed download tmp file and a complete file to be downloaded, also with a seed file.

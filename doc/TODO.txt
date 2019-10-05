@@ -67,6 +67,10 @@ NAT
 DHT
 Magnet
 
+2019-10-5
+=========
+Pausing taks should not close the incoming connection?
+
 
 
  
