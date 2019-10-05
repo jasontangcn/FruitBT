@@ -123,12 +123,13 @@ public class DownloadManager {
 		this.startDownloadTask(Utils.bytes2HexString(seed.getInfoHash()));
 	}
 
-
+	/*
 	public void finalize() {
 		for (DownloadTask task : this.downloadTasks.values()) {
 			task.getFileMetadata().close();
 		}
 	}
+	*/
 	
 	public DownloadTask getDownloadTask(String infoHash) {
 		return this.downloadTasks.get(infoHash);
@@ -194,7 +195,9 @@ public class DownloadManager {
 		// 1. Close the connections.
 		// 2. Remove the requesting index from PiecePicker.
 		// 3. Close task file and temp file.
-		this.connectionManager.closePeerConnections(infoHash); 	//TODO: should not close the incoming connections.
+		
+		// The connection may be incoming or outgoing connection.
+		this.connectionManager.closePeerConnections(infoHash); 	//TODO: should not close the incoming connections?
 		this.downloadTasks.get(infoHash).getFileMetadata().close();
 		try {
 			DownloadTask task = this.downloadTasks.get(infoHash);
@@ -248,6 +251,7 @@ public class DownloadManager {
 		//logger.trace("downloadTasks : " + this.downloadTasks + ".");
 	}
 	
+	// TODO: communicate with tracker and make myself a seed?
 	public void seeding(String seedFilePath) throws IOException {
 		TorrentSeed seed = TorrentSeed.parseSeedFile(seedFilePath);
 		peerFinder.getPeers(seed);

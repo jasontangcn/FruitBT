@@ -236,7 +236,7 @@ public class PeerFinder {
 		return peers;
 	}
 	
-	public void removePingTask(String infoHash) {
+	public void removePingTrackerTask(String infoHash) {
 		ScheduledExecutorService task = this.pingTrackerTasks.remove(infoHash);
 		if(task != null)
 			task.shutdown();
@@ -246,7 +246,7 @@ public class PeerFinder {
 		Iterator<String> iterator = this.pingTrackerTasks.keySet().iterator();
 		while(iterator.hasNext()) {
 			String infoHash = iterator.next();
-			this.removePingTask(infoHash);
+			this.removePingTrackerTask(infoHash);
 		}
 	}
 	

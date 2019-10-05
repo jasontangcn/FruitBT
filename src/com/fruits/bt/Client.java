@@ -48,12 +48,14 @@ public class Client {
 	public static void main(String[] args) throws IOException {
 		Client client = new Client();
 		client.start();
+		
+		// TODO: the hook must be called?
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				logger.error("Shutting down the client.");
 				long begin = System.currentTimeMillis();
 				// This is used to close the channel for the file in FileMetadata.
-				client.stop();
+				client.shutdown();
 				logger.error("Shutting down the client spent {} ms.", (System.currentTimeMillis() - begin));
 			}
 		});
@@ -92,15 +94,30 @@ public class Client {
 						System.exit(0);
 					}
 				});
+		//TODO: how to improve this design?
 		downloadManager.setConnectionManager(connectionManager);
 
 		//downloadManager.addDownloadTask("D:\\TorrentDownload5\\129952FBCED69192FB110391D6AA20F7E7AFAA80.torrent");
 		//downloadManager.addDownloadTask("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
-		downloadManager.seeding("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
+		
+		
+		//How to test FruitBT?
+		/*
+		 * (1) Start BitCometTracker_0.5.
+		 * (2) Start Seed in port 6666.
+		 * (3) Start downloading client.
+		 * Torrent seed should point to TrackerServer.
+		 * Seed should have a different PeerId with downloading client.
+		 * Seed should have a completed download tmp file and a complete file to be downloaded, also with a seed file.
+		 */
+		//If it is a seed client, also pls. give it a different PeerID.
+		//downloadManager.seeding("D:\\TorrentDownload4\\Wireshark-win32-1.10.0.exe.torrent");
+		
 		//downloadManager.startDownloadTask("b3c8f8e50d3f3f701157f2c2517eee78588b48f2");
+		downloadManager.addDownloadTask("D:\\FruitBT\\TorrentDownload3\\Wireshark-win32-1.10.0.exe.torrent");
 	}
 
-	public void stop() {
+	public void shutdown() {
 		this.downloadManager.stopAllDownloadTasks();
 		this.connectionManager.shutdown();
 	}
