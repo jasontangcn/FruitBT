@@ -191,6 +191,7 @@ public class PeerConnectionManager implements Runnable {
 
 					if (key.isAcceptable()) {
 						ServerSocketChannel serverSocket = (ServerSocketChannel) key.channel();
+						// If ServerSocketChannel is non-blocking, socketChannel may be null?
 						SocketChannel socketChannel = serverSocket.accept(); // Lots of exceptions may be thrown.
 
 						try {
